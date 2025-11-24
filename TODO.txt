@@ -1,0 +1,230 @@
+================================================================================
+                    TAXMATE MVP - DEVELOPMENT TODO LIST
+================================================================================
+Project: TaxMate – AI Tax Reform Assistant
+Goal: Launch a functional web-based RAG bot for Tax Reform Challenge 2025
+Timeline: 4-5 Weeks
+================================================================================
+
+[ ] WEEK 1: PROJECT SETUP & ENVIRONMENT
+================================================================================
+
+    [ ] 1.1 Initialize Project Structure
+        [ ] Create GitHub repository (if not done)
+        [ ] Set up folder structure:
+            - /frontend (React/Next.js)
+            - /backend (FastAPI/Flask)
+            - /data (tax documents)
+            - /scripts (document processing)
+        [ ] Create .gitignore file
+        [ ] Create .env.example file
+
+    [ ] 1.2 Set Up Frontend
+        [ ] Initialize Next.js project (npx create-next-app@latest)
+        [ ] Install dependencies (axios, tailwindcss, etc.)
+        [ ] Set up basic page structure
+        [ ] Configure Tailwind CSS for styling
+
+    [ ] 1.3 Set Up Backend
+        [ ] Initialize FastAPI project
+        [ ] Install dependencies:
+            - fastapi
+            - uvicorn
+            - python-dotenv
+            - openai
+            - langchain
+            - faiss-cpu (or chromadb/pinecone-client)
+            - pypdf or pdfplumber
+        [ ] Create basic API endpoints skeleton
+        [ ] Set up CORS for frontend communication
+
+    [ ] 1.4 Get API Keys & Accounts
+        [ ] Create OpenAI account & get API key
+        [ ] (Optional) Create Pinecone account for vector DB
+        [ ] Set up environment variables securely
+
+
+[ ] WEEK 2: DOCUMENT PROCESSING & VECTOR DATABASE
+================================================================================
+
+    [ ] 2.1 Collect Tax Documents
+        [ ] Download 2025 Tax Reform Act PDF
+        [ ] Collect FIRS FAQs
+        [ ] Gather government circulars/guides
+        [ ] Save all documents in /data folder
+
+    [ ] 2.2 Build Document Processing Pipeline
+        [ ] Create script to extract text from PDFs
+        [ ] Clean and normalize extracted text
+        [ ] Split documents into chunks (500-token chunks with overlap)
+        [ ] Add metadata to each chunk (source, page number)
+
+    [ ] 2.3 Set Up Vector Database
+        [ ] Choose vector DB (FAISS for local, Pinecone for cloud)
+        [ ] Create embeddings for all document chunks
+        [ ] Store embeddings in vector database
+        [ ] Test similarity search with sample queries
+
+    [ ] 2.4 Test Retrieval
+        [ ] Run test queries against vector DB
+        [ ] Verify relevant chunks are returned
+        [ ] Tune chunk size and overlap if needed
+        [ ] Document retrieval performance
+
+
+[ ] WEEK 3: RAG IMPLEMENTATION & LLM INTEGRATION
+================================================================================
+
+    [ ] 3.1 Build Retrieval Module
+        [ ] Create function to embed user queries
+        [ ] Create function to search vector DB (top-5 results)
+        [ ] Implement relevance scoring/filtering
+        [ ] Return ranked document chunks
+
+    [ ] 3.2 Build Generator Module
+        [ ] Set up OpenAI API connection
+        [ ] Create prompt template:
+            """
+            You are TaxMate, an AI assistant for Nigerian Tax Reform 2025.
+            Answer based on official documents only.
+            Context: {retrieved_documents}
+            Question: {user_query}
+            Answer:
+            """
+        [ ] Implement LLM call with context injection
+        [ ] Add source citation to responses
+
+    [ ] 3.3 Create RAG Pipeline
+        [ ] Connect retrieval + generation modules
+        [ ] Handle edge cases (no relevant docs found)
+        [ ] Add error handling
+        [ ] Test end-to-end RAG flow
+
+    [ ] 3.4 Build API Endpoints
+        [ ] POST /api/chat - main Q&A endpoint
+        [ ] GET /api/health - health check
+        [ ] (Optional) GET /api/history - conversation history
+        [ ] Test endpoints with Postman/curl
+
+
+[ ] WEEK 4: WEB UI DEVELOPMENT
+================================================================================
+
+    [ ] 4.1 Build Chat Interface
+        [ ] Create chat container component
+        [ ] Create message bubble components (user & bot)
+        [ ] Create input field with send button
+        [ ] Add loading/typing indicator
+
+    [ ] 4.2 Connect Frontend to Backend
+        [ ] Set up API client (axios/fetch)
+        [ ] Send user messages to backend
+        [ ] Display bot responses in chat
+        [ ] Handle loading states
+
+    [ ] 4.3 Add UI Enhancements
+        [ ] Display source citations on responses
+        [ ] Add FAQ/Quick Tips sidebar (optional)
+        [ ] Make UI responsive (mobile-friendly)
+        [ ] Add TaxMate logo/branding
+
+    [ ] 4.4 Polish UI/UX
+        [ ] Add welcome message on load
+        [ ] Add sample questions users can click
+        [ ] Style with appropriate colors (green/blue theme)
+        [ ] Add error messages for failed requests
+
+
+[ ] WEEK 5: TESTING, DEPLOYMENT & DEMO PREP
+================================================================================
+
+    [ ] 5.1 Testing
+        [ ] Test with 10+ sample tax questions
+        [ ] Verify accuracy of responses
+        [ ] Test edge cases (unclear questions, off-topic)
+        [ ] Test on mobile devices
+        [ ] Fix any bugs found
+
+    [ ] 5.2 Performance Optimization
+        [ ] Optimize response time (target: <2 seconds)
+        [ ] Add caching if needed
+        [ ] Minimize frontend bundle size
+        [ ] Test under load
+
+    [ ] 5.3 Deployment
+        [ ] Deploy frontend to Vercel
+        [ ] Deploy backend to Render/Railway
+        [ ] Set up environment variables on hosting
+        [ ] Configure custom domain (optional)
+        [ ] Test deployed application end-to-end
+
+    [ ] 5.4 Demo Preparation
+        [ ] Prepare 3-4 demo questions:
+            - "What are the tax brackets under the 2025 reform?"
+            - "How does NYSC affect my tax obligations?"
+            - "What are the new deductions for students?"
+            - "When is the tax filing deadline?"
+        [ ] Practice demo flow
+        [ ] Prepare backup plan if live demo fails
+        [ ] Create short demo video (optional)
+
+    [ ] 5.5 Documentation
+        [ ] Update README.md with:
+            - Project description
+            - Setup instructions
+            - How to run locally
+            - API documentation
+        [ ] Final review of DESIGNDOC.md
+        [ ] Prepare submission materials
+
+
+================================================================================
+                           QUICK REFERENCE
+================================================================================
+
+KEY COMMANDS:
+-------------
+Frontend:
+  cd frontend && npm install
+  npm run dev
+
+Backend:
+  cd backend && pip install -r requirements.txt
+  uvicorn main:app --reload
+
+IMPORTANT FILES TO CREATE:
+--------------------------
+/frontend
+  ├── pages/index.js (or app/page.tsx)
+  ├── components/ChatWindow.js
+  ├── components/MessageBubble.js
+  └── components/InputField.js
+
+/backend
+  ├── main.py (FastAPI app)
+  ├── rag/retriever.py
+  ├── rag/generator.py
+  ├── utils/document_processor.py
+  └── requirements.txt
+
+/data
+  └── tax_reform_2025.pdf
+
+ENVIRONMENT VARIABLES NEEDED:
+-----------------------------
+OPENAI_API_KEY=your_openai_key
+PINECONE_API_KEY=your_pinecone_key (if using Pinecone)
+PINECONE_ENVIRONMENT=your_environment
+
+SUCCESS CRITERIA FOR MVP:
+-------------------------
+✓ User can type a tax question
+✓ Bot returns accurate answer from official documents
+✓ Source/citation shown with response
+✓ Response time under 2 seconds
+✓ Works on mobile and desktop
+✓ Deployed and accessible via URL
+
+================================================================================
+                         GOOD LUCK! 🚀
+================================================================================
