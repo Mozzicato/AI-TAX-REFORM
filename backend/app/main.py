@@ -5,6 +5,7 @@ Graph RAG Pipeline for Tax Guidance
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from app.routes import chat_routes
 import os
 from dotenv import load_dotenv
 
@@ -104,6 +105,13 @@ async def shutdown_event():
     # TODO: Close Neo4j connection
     # TODO: Close Vector DB connection
     print("✅ NTRIA API Closed!")
+
+# ============================================================================
+# INCLUDE ROUTES
+# ============================================================================
+
+# Register chat routes
+app.include_router(chat_routes.router)
 
 # ============================================================================
 # RUN DEVELOPMENT SERVER

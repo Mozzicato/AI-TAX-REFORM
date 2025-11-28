@@ -1,0 +1,418 @@
+"""
+Hybrid Retrieval Module
+Combines graph-based and vector-based retrieval for optimal results
+"""
+
+import json
+import os
+from typing import List, Dict, Tuple
+from dotenv import load_dotenv
+from neo4j import GraphDatabase
+import openai
+
+load_dotenv()
+
+# Initialize connections
+openai.api_key = os.getenv("OPENAI_API_KEY")
+MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+
+# ============================================================================
+# GRAPH RETRIEVER
+# ============================================================================
+
+class GraphRetriever:
+    """Retrieves information from Neo4j knowledge graph"""
+    
+    def __init__(self):
+        self.uri = os.getenv("NEO4J_URI")
+        self.username = os.getenv("NEO4J_USERNAME", "neo4j")
+        self.password = os.getenv("NEO4J_PASSWORD")
+        self.database = os.getenv("NEO4J_DATABASE", "neo4j")
+        self.driver = None
+        self.connect()
+    
+    def connect(self):
+        """Connect to Neo4j"""
+        try:
+            self.driver = GraphDatabase.driver(
+                self.uri,
+                auth=(self.username, self.password)
+            )
+            print("✅ Connected to Neo4j for retrieval")
+        except Exception as e:
+            print(f"⚠️  Could not connect to Neo4j: {str(e)}")
+    
+    def extract_entities_from_query(self, query: str) -> Dict:
+        """
+        Extract tax entities from user query using GPT-4
+        
+        Args:
+            query: User question
+            
+        Returns:
+            Dictionary with extracted entities and their types
+        """
+        
+        prompt = f"""
+        Extract tax-related entities from this question:
+        "{query}"
+        
+        Return JSON with:
+        {{
+          "entities": [
+            {{"name": "entity_name", "type": "Tax | Taxpayer | Agency | etc"}}
+          ]
+        }}
+        
+        Only return entities that directly relate to Nigerian taxes.
+        If no relevant entities found, return {{"entities": []}}
+        """
+        
+        try:
+            response = openai.ChatCompletion.create(
+                model=MODEL,
+                messages=[
+                    {"role": "system", "content": "You are a tax expert. Extract entities and return only JSON."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.3,
+                max_tokens=500
+            )
+            
+            result_text = response.choices[0].message.content
+            return json.loads(result_text)
+        except Exception as e:
+            print(f"⚠️  Error extracting entities: {str(e)}")
+            return {"entities": []}
+    
+    def search_by_entity(self, entity_name: str, depth: int = 2) -> List[Dict]:
+        """
+        Search graph starting from an entity
+        
+        Args:
+            entity_name: Entity to search from
+            depth: Relationship depth (1-3)
+            
+        Returns:
+            List of related nodes
+        """
+        
+        if not self.driver:
+            return []
+        
+        try:
+            with self.driver.session(database=self.database) as session:
+                # Find the entity first
+                find_query = "MATCH (n {name: $name}) RETURN n"
+                result = session.run(find_query, {"name": entity_name})
+                
+                if not result.single():
+                    return []
+                
+                # Get related nodes up to specified depth
+                if depth == 1:
+                    query = """
+                    MATCH (n {name: $name})-[r]-(related)
+                    RETURN n, r, related
+                    LIMIT 20
+                    """
+                elif depth == 2:
+                    query = """
+                    MATCH (n {name: $name})-[r1]-(m)-[r2]-(related)
+                    RETURN n, r1, m, r2, related
+                    LIMIT 20
+                    """
+                else:
+                    query = """
+                    MATCH (n {name: $name})-[*..3]-(related)
+                    RETURN n, related
+                    LIMIT 20
+                    """
+                
+                results = session.run(query, {"name": entity_name})
+                return [record.data() for record in results]
+                
+        except Exception as e:
+            print(f"⚠️  Graph search error: {str(e)}")
+            return []
+    
+    def get_tax_obligations(self, taxpayer_category: str) -> List[Dict]:
+        """
+        Get all taxes applicable to a taxpayer category
+        
+        Args:
+            taxpayer_category: Type of taxpayer
+            
+        Returns:
+            List of applicable taxes with details
+        """
+        
+        if not self.driver:
+            return []
+        
+        try:
+            with self.driver.session(database=self.database) as session:
+                query = """
+                MATCH (tp:Taxpayer {category: $category})-[:liable_for]->(tax:Tax)
+                OPTIONAL MATCH (tax)-[:has_deadline]->(deadline:Deadline)
+                OPTIONAL MATCH (tax)-[:applies_to]->(penalty:Penalty)
+                RETURN tax, deadline, penalty
+                """
+                
+                results = session.run(query, {"category": taxpayer_category})
+                return [record.data() for record in results]
+                
+        except Exception as e:
+            print(f"⚠️  Error getting tax obligations: {str(e)}")
+            return []
+    
+    def close(self):
+        """Close Neo4j connection"""
+        if self.driver:
+            self.driver.close()
+
+# ============================================================================
+# VECTOR RETRIEVER
+# ============================================================================
+
+class VectorRetriever:
+    """Retrieves documents from vector database"""
+    
+    def __init__(self):
+        self.db_type = os.getenv("VECTOR_DB_TYPE", "pinecone").lower()
+        self.adapter = self._init_adapter()
+    
+    def _init_adapter(self):
+        """Initialize vector database adapter"""
+        if self.db_type == "pinecone":
+            try:
+                import pinecone
+                api_key = os.getenv("PINECONE_API_KEY")
+                environment = os.getenv("PINECONE_ENVIRONMENT")
+                index_name = os.getenv("PINECONE_INDEX_NAME", "ntria-tax-documents")
+                
+                pinecone.init(api_key=api_key, environment=environment)
+                index = pinecone.Index(index_name)
+                print("✅ Connected to Pinecone for retrieval")
+                return index
+            except Exception as e:
+                print(f"⚠️  Pinecone error: {str(e)}")
+                return None
+        
+        elif self.db_type == "chroma":
+            try:
+                import chromadb
+                client = chromadb.Client()
+                collection = client.get_or_create_collection(
+                    name="ntria-tax-documents"
+                )
+                print("✅ Connected to Chroma for retrieval")
+                return collection
+            except Exception as e:
+                print(f"⚠️  Chroma error: {str(e)}")
+                return None
+        
+        return None
+    
+    def generate_embedding(self, text: str) -> List[float]:
+        """Generate embedding for text"""
+        try:
+            response = openai.Embedding.create(
+                input=text,
+                model=EMBEDDING_MODEL
+            )
+            return response["data"][0]["embedding"]
+        except Exception as e:
+            print(f"⚠️  Embedding error: {str(e)}")
+            return None
+    
+    def search(self, query: str, top_k: int = 5) -> List[Dict]:
+        """
+        Search vector database for similar documents
+        
+        Args:
+            query: Search query
+            top_k: Number of results to return
+            
+        Returns:
+            List of relevant documents
+        """
+        
+        if not self.adapter:
+            return []
+        
+        # Generate query embedding
+        query_embedding = self.generate_embedding(query)
+        if not query_embedding:
+            return []
+        
+        try:
+            if self.db_type == "pinecone":
+                results = self.adapter.query(
+                    vector=query_embedding,
+                    top_k=top_k,
+                    include_metadata=True
+                )
+                
+                return [
+                    {
+                        "id": match.id,
+                        "score": match.score,
+                        "metadata": match.metadata,
+                        "text": match.metadata.get("text_preview", "")
+                    }
+                    for match in results.matches
+                ]
+            
+            elif self.db_type == "chroma":
+                results = self.adapter.query(
+                    query_embeddings=[query_embedding],
+                    n_results=top_k
+                )
+                
+                return [
+                    {
+                        "id": results["ids"][0][i],
+                        "score": results["distances"][0][i],
+                        "text": results["documents"][0][i],
+                        "metadata": results["metadatas"][0][i]
+                    }
+                    for i in range(len(results["ids"][0]))
+                ]
+        except Exception as e:
+            print(f"⚠️  Vector search error: {str(e)}")
+            return []
+
+# ============================================================================
+# HYBRID RETRIEVER
+# ============================================================================
+
+class HybridRetriever:
+    """Combines graph and vector retrieval for optimal results"""
+    
+    def __init__(self):
+        self.graph_retriever = GraphRetriever()
+        self.vector_retriever = VectorRetriever()
+    
+    def retrieve(self, query: str, top_k: int = 5) -> Dict:
+        """
+        Perform hybrid retrieval combining graph and vector search
+        
+        Args:
+            query: User question
+            top_k: Number of results
+            
+        Returns:
+            Comprehensive context with graph and vector results
+        """
+        
+        print(f"\n🔍 Retrieving context for: '{query}'")
+        
+        context = {
+            "query": query,
+            "graph_results": [],
+            "vector_results": [],
+            "fused_results": []
+        }
+        
+        # Extract entities from query
+        print("  → Extracting entities from query...")
+        entities = self.graph_retriever.extract_entities_from_query(query)
+        
+        # Graph-based retrieval
+        if entities.get("entities"):
+            print(f"  → Found {len(entities['entities'])} entities, searching graph...")
+            for entity in entities["entities"]:
+                entity_name = entity.get("name")
+                results = self.graph_retriever.search_by_entity(entity_name)
+                context["graph_results"].extend(results)
+        
+        # Vector-based retrieval
+        print("  → Performing semantic search...")
+        vector_results = self.vector_retriever.search(query, top_k)
+        context["vector_results"] = vector_results
+        
+        # Fuse results
+        print("  → Fusing and ranking results...")
+        fused = self._fuse_results(context["graph_results"], context["vector_results"])
+        context["fused_results"] = fused[:top_k]
+        
+        print(f"✅ Retrieved {len(context['fused_results'])} results")
+        
+        return context
+    
+    def _fuse_results(self, graph_results: List, vector_results: List) -> List[Dict]:
+        """
+        Fuse graph and vector results with ranking
+        
+        Args:
+            graph_results: Results from graph search
+            vector_results: Results from vector search
+            
+        Returns:
+            Ranked combined results
+        """
+        
+        fused = []
+        
+        # Add vector results with confidence scores
+        for vr in vector_results:
+            fused.append({
+                "source": "vector",
+                "score": vr.get("score", 0),
+                "content": vr.get("text", ""),
+                "metadata": vr.get("metadata", {})
+            })
+        
+        # Add graph results (lower priority)
+        for i, gr in enumerate(graph_results):
+            fused.append({
+                "source": "graph",
+                "score": 0.5 - (i * 0.05),  # Decreasing score
+                "content": json.dumps(gr),
+                "metadata": {}
+            })
+        
+        # Sort by score (descending)
+        fused.sort(key=lambda x: x["score"], reverse=True)
+        
+        # Remove duplicates based on content
+        unique_results = []
+        seen_content = set()
+        
+        for result in fused:
+            content_hash = hash(result["content"][:100])
+            if content_hash not in seen_content:
+                unique_results.append(result)
+                seen_content.add(content_hash)
+        
+        return unique_results
+    
+    def close(self):
+        """Close all connections"""
+        self.graph_retriever.close()
+
+# ============================================================================
+# EXAMPLE USAGE
+# ============================================================================
+
+if __name__ == "__main__":
+    # Initialize hybrid retriever
+    retriever = HybridRetriever()
+    
+    # Example queries
+    test_queries = [
+        "What are the tax obligations for a freelancer?",
+        "What is the VAT registration threshold?",
+        "When do I need to file my annual tax return?"
+    ]
+    
+    for query in test_queries:
+        context = retriever.retrieve(query, top_k=5)
+        print(f"\n📊 Context for: {query}")
+        print(f"   Graph results: {len(context['graph_results'])}")
+        print(f"   Vector results: {len(context['vector_results'])}")
+        print(f"   Fused results: {len(context['fused_results'])}")
+    
+    retriever.close()
