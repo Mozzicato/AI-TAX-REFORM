@@ -69,24 +69,23 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 detail="Message must be at least 2 characters"
             )
         
-        # TODO: Import Graph RAG pipeline
-        # from app.services.generator import GraphRAGPipeline
-        # pipeline = GraphRAGPipeline()
-        # result = pipeline.answer_query(request.message)
+        # Use the Graph RAG pipeline
+        from app.services.rag_pipeline import get_rag_pipeline
         
-        # Temporary mock response
-        result = {
-            "query": request.message,
-            "answer": "This is a placeholder response. The Graph RAG pipeline will be integrated here.",
-            "sources": [],
-            "confidence": 0.5,
-            "valid": True,
-            "retrieval_stats": {
-                "graph_results": 0,
-                "vector_results": 0,
-                "fused_results": 0
-            }
-        }
+        pipeline = get_rag_pipeline()
+        
+        # Convert Pydantic models to dicts for the pipeline
+        history = []
+        if request.conversation_history:
+            history = [
+                {"role": msg.role, "content": msg.content} 
+                for msg in request.conversation_history
+            ]
+            
+        result = pipeline.answer_query(
+            query=request.message,
+            history=history
+        )
         
         # Convert sources
         sources = [

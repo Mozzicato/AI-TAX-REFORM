@@ -18,6 +18,18 @@ const nextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: '/api/proxy/:path*',
+        destination: process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/api/v1/:path*` : 'http://localhost:8000/api/v1/:path*',
+      },
+      {
+        source: '/backend-health',
+        destination: process.env.BACKEND_URL ? `${process.env.BACKEND_URL}/health` : 'http://localhost:8000/health',
+      },
+    ]
+  },
 };
 
 module.exports = nextConfig;

@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useRef, useEffect } from 'react';
 import { useChat } from '@/hooks/useChat';
 import MessageBubble from '@/components/MessageBubble';
 import InputField from '@/components/InputField';
@@ -19,7 +19,7 @@ interface ChatWindowProps {
 export const ChatWindow: React.FC<ChatWindowProps> = ({
   onMessageSent,
   onError,
-}) => {
+}: ChatWindowProps) => {
   const {
     messages,
     loading,
@@ -27,19 +27,18 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     sendMessage,
     clearHistory,
   } = useChat({
-    onError: (err) => {
+    onError: (err: any) => {
       if (onError) {
         onError(err.message);
       }
     },
-    onSuccess: (response) => {
+    onSuccess: (response: ChatResponse) => {
       if (onMessageSent) {
         onMessageSent(response);
       }
     },
   });
 
-  const [inputValue, setInputValue] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
 
@@ -48,11 +47,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  const handleSendMessage = async () => {
-    if (!inputValue.trim() || loading) return;
-
-    const message = inputValue;
-    setInputValue('');
+  const handleSendMessage = async (message: string) => {
+    if (!message.trim() || loading) return;
 
     try {
       await sendMessage(message);
@@ -64,7 +60,6 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
   const handleClearHistory = () => {
     if (confirm('Are you sure you want to clear the chat history?')) {
       clearHistory();
-      setInputValue('');
     }
   };
 
@@ -102,7 +97,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 Welcome to NTRIA
               </h2>
               <p className="text-gray-500 mb-4 max-w-md">
-                Ask me any questions about Nigeria's tax reforms, regulations, processes,
+                Ask me any questions about Nigeria&apos;s tax reforms, regulations, processes,
                 and compliance requirements.
               </p>
               <div className="text-sm text-gray-400 space-y-2">
@@ -121,8 +116,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
               <MessageBubble
                 key={index}
                 message={message.content}
-                isUser={message.role === 'user'}
-                timestamp={message.timestamp}
+                isBot={message.role === 'assistant'}
+                sources={message.role === 'assistant' ? [] : undefined}
               />
             ))}
             {loading && (
@@ -149,11 +144,8 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
       <div className="border-t border-gray-200 bg-white p-4">
         <div className="max-w-4xl mx-auto">
           <InputField
-            value={inputValue}
-            onChange={setInputValue}
             onSend={handleSendMessage}
-            disabled={loading}
-            placeholder="Ask about tax reforms, compliance, processes..."
+            isLoading={loading}
           />
           <p className="text-xs text-gray-400 mt-2 text-center">
             NTRIA uses AI to answer questions. Always verify critical information with official sources.

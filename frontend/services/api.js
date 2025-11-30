@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/v1";
+// Use local proxy to avoid CORS/port issues in Codespaces
+const API_BASE_URL = "/api/proxy";
 
 // Create axios instance
 const api = axios.create({
@@ -19,14 +20,16 @@ const api = axios.create({
  * @param {string} message - User question
  * @param {string} sessionId - Session identifier
  * @param {object} context - Optional context (taxpayer type, income, etc.)
+ * @param {Array} history - Conversation history
  * @returns {Promise} Response from backend
  */
-export const sendMessage = async (message, sessionId, context = {}) => {
+export const sendMessage = async (message, sessionId, context = {}, history = []) => {
   try {
     const response = await api.post("/chat", {
       message,
       session_id: sessionId,
       context,
+      conversation_history: history,
     });
     return response.data;
   } catch (error) {
@@ -88,7 +91,8 @@ export const graphSearch = async (query, filters = {}) => {
  */
 export const checkHealth = async () => {
   try {
-    const response = await api.get("/health");
+    // Use proxied health endpoint
+    const response = await axios.get("/backend-health");
     return response.data;
   } catch (error) {
     console.error("Error checking health:", error);

@@ -72,8 +72,8 @@ class NTRIAApiClient {
 
     // Add response interceptor for error handling
     this.client.interceptors.response.use(
-      (response) => response,
-      (error) => this.handleError(error)
+      (response: any) => response,
+      (error: AxiosError) => this.handleError(error)
     );
   }
 
@@ -193,7 +193,7 @@ class NTRIAApiClient {
   /**
    * Error handler
    */
-  private handleError(error: AxiosError): Promise<never> {
+  private handleError(error: AxiosError | any): Promise<never> {
     const apiError: ApiError = {
       status: error.response?.status || 500,
       message: error.message,

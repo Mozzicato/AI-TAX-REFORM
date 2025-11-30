@@ -38,7 +38,7 @@ export function useChat(options: UseChatOptions = {}) {
   useEffect(() => {
     if (options.initialSessionId) {
       apiClient.setSessionId(options.initialSessionId);
-      setState((prev) => ({ ...prev, sessionId: options.initialSessionId }));
+      setState((prev: ChatState) => ({ ...prev, sessionId: options.initialSessionId || null }));
     }
   }, [options.initialSessionId]);
 
@@ -56,7 +56,7 @@ export function useChat(options: UseChatOptions = {}) {
       }
 
       try {
-        setState((prev) => ({
+        setState((prev: ChatState) => ({
           ...prev,
           loading: true,
           error: null,
@@ -88,7 +88,7 @@ export function useChat(options: UseChatOptions = {}) {
         conversationHistoryRef.current.push(assistantMessage);
 
         // Update state
-        setState((prev) => ({
+        setState((prev: ChatState) => ({
           ...prev,
           messages: [
             ...prev.messages,
@@ -112,7 +112,7 @@ export function useChat(options: UseChatOptions = {}) {
         return response;
       } catch (error) {
         const apiError = error as ApiError;
-        setState((prev) => ({
+        setState((prev: ChatState) => ({
           ...prev,
           loading: false,
           error: apiError.message,
@@ -132,7 +132,7 @@ export function useChat(options: UseChatOptions = {}) {
    * Clear chat history
    */
   const clearHistory = useCallback(() => {
-    setState((prev) => ({
+    setState((prev: ChatState) => ({
       ...prev,
       messages: [],
     }));
@@ -143,7 +143,7 @@ export function useChat(options: UseChatOptions = {}) {
    * Remove last message pair (user + assistant)
    */
   const undoLastMessage = useCallback(() => {
-    setState((prev) => {
+    setState((prev: ChatState) => {
       const newMessages = [...prev.messages];
       // Remove last message (could be user or assistant)
       if (newMessages.length > 0) {
@@ -169,7 +169,7 @@ export function useChat(options: UseChatOptions = {}) {
    * Set an error message
    */
   const setError = useCallback((error: string | null) => {
-    setState((prev) => ({ ...prev, error }));
+    setState((prev: ChatState) => ({ ...prev, error }));
   }, []);
 
   return {
