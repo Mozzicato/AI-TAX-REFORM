@@ -1,0 +1,14 @@
+# NTRIA Gradio Interface - Hugging Face Spaces
+# Dependencies for the Gradio app
+
+# Web Framework & Gradio
+gradio==4.26.0
+requests==2.31.0
+
+# Backend dependencies (if needed for local testing)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+python-dotenv==1.0.0
+
+# Data processing
+pydantic==2.5.0

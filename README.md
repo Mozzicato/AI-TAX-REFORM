@@ -1,78 +1,67 @@
+---
+title: NTRIA - Nigeria Tax Reform Intelligence Assistant
+emoji: 🇳🇬
+colorFrom: green
+colorTo: blue
+sdk: gradio
+sdk_version: 4.26.0
+app_file: app.py
+pinned: true
+license: mit
+---
+
 # 🇳🇬 NTRIA - Nigeria Tax Reform Intelligence Assistant
 
-[![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
-[![Project Status](https://img.shields.io/badge/status-MVP%20Development-yellow.svg)]()
-[![Python](https://img.shields.io/badge/Python-3.9+-blue.svg)]()
-[![Node.js](https://img.shields.io/badge/Node.js-18+-green.svg)]()
+A sophisticated AI-powered assistant that helps Nigerians understand and navigate the 2025 Tax Reform Act using Graph-Enhanced Retrieval-Augmented Generation (Graph RAG).
+
+## Features
+
+- **📚 Comprehensive Tax Guidance**: Get accurate information about Nigeria's tax obligations, brackets, and compliance requirements
+- **🔗 Knowledge Graph**: Advanced knowledge graph connecting tax concepts, regulations, and compliance procedures
+- **💡 Personalized Recommendations**: Receive tailored advice based on your specific tax situation
+- **📋 Compliance Alerts**: Stay informed about important tax deadlines and requirements
+- **🎯 Multi-step Guidance**: Navigate complex tax scenarios with step-by-step explanations
+
+## How to Use
+
+1. **Ask a Question**: Type your tax-related question in the text box
+2. **Get Instant Response**: Receive AI-generated answers with citations from official documents
+3. **View Sources**: See the official documents and sources used to generate each response
+4. **Clear & Continue**: Clear chat history and ask follow-up questions
+
+## Example Questions
+
+- What are the new tax brackets under the 2025 reform?
+- Who is eligible for tax reliefs in Nigeria?
+- What are the compliance deadlines for the new tax year?
+- How does the simplified taxation for small businesses work?
+- What documents do I need for tax registration?
+
+## Technology Stack
+
+- **Frontend**: Gradio (Python UI framework)
+- **Backend**: FastAPI with Graph RAG Pipeline
+- **Knowledge Base**: Neo4j Graph Database
+- **Vector Store**: Pinecone for semantic search
+- **LLM**: OpenAI GPT models
+- **Document Processing**: Advanced NLP and PDF extraction
+
+## About
+
+**NTRIA** is built to make Nigeria's tax system more accessible and understandable to students, entrepreneurs, NYSC participants, and citizens. By combining advanced AI with official tax documentation, we provide reliable, up-to-date tax guidance.
+
+## Disclaimer
+
+This assistant is designed for informational purposes only. While it strives to provide accurate information based on the 2025 Tax Reform Act, it should not be used as a substitute for professional tax advice. For critical tax decisions, please consult with qualified tax professionals and accountants.
+
+## Data Sources
+
+- Nigeria 2025 Tax Reform Act (Official Documents)
+- Nigerian Revenue Service (NRS) Guidelines
+- Federal Inland Revenue Service (FIRS) Publications
 
 ---
 
-## **🎯 Project Overview**
-
-**NTRIA** is an intelligent AI assistant that helps Nigerian students, NYSC participants, entrepreneurs, and citizens understand and navigate the **2025 Tax Reform Act**. 
-
-Built with **Graph-enhanced Retrieval-Augmented Generation (Graph RAG)**, NTRIA provides accurate tax guidance, multi-step compliance recommendations, deadline alerts, and personalized advice.
-
-**Status:** MVP Development for Tax Reform Challenge 2025
-
----
-
-## **🚀 Quick Start**
-
-```bash
-# Clone & Setup
-git clone https://github.com/Mozzicato/AI-TAX-REFORM.git
-cd AI-TAX-REFORM
-cp .env.example .env  # Add your API keys
-
-# Frontend
-cd frontend && npm install && npm run dev
-
-# Backend (new terminal)
-cd backend && python -m venv venv
-source venv/bin/activate && pip install -r requirements.txt
-uvicorn app.main:app --reload
-```
-
-Visit **http://localhost:3000**
-
----
-
-## **📚 Documentation**
-
-- [🔧 Full Architecture](DESIGNDOC.md) - Graph RAG system design
-- [📋 Development Tasks](TODO.txt) - Step-by-step roadmap
-
----
-
-## **📦 Tech Stack**
-
-| Component | Technology |
-|-----------|-----------|
-| Frontend | Next.js + React + Tailwind CSS |
-| Backend | FastAPI + Python |
-| Graph DB | Neo4j |
-| Vector DB | Pinecone / Chroma |
-| LLM | OpenAI GPT-4 |
-| Deployment | Vercel / Render |
-
----
-
-## **📊 Project Structure**
-
-```
-AI-TAX-REFORM/
-├── frontend/          # Next.js React app
-├── backend/           # FastAPI server  
-├── data/              # Tax documents
-├── scripts/           # Processing
-├── graph/             # Neo4j schemas
-├── DESIGNDOC.md       # Full design
-├── TODO.txt           # Tasks
-└── README.md          # This file
-```
-
----
-
-**Let's simplify Nigerian taxes! 🇳🇬✨**  
-*Last Updated: November 27, 2025*
+**Status**: ✅ Live on Hugging Face Spaces  
+**Built with**: Gradio + Graph RAG  
+**License**: MIT
