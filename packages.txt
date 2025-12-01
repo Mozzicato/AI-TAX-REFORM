@@ -1,2 +1,0 @@
-# Optional system dependencies for Hugging Face Spaces
-# Uncomment if needed for specific features
