@@ -93,17 +93,12 @@ async def global_exception_handler(request, exc):
 async def startup_event():
     """Initialize connections on startup"""
     print("🚀 NTRIA API Starting...")
-    # TODO: Initialize Neo4j connection
-    # TODO: Initialize Vector DB connection
-    # TODO: Initialize OpenAI API connection
     print("✅ NTRIA API Ready!")
 
 @app.on_event("shutdown")
 async def shutdown_event():
     """Close connections on shutdown"""
     print("🛑 NTRIA API Shutting down...")
-    # TODO: Close Neo4j connection
-    # TODO: Close Vector DB connection
     print("✅ NTRIA API Closed!")
 
 # ============================================================================

@@ -1,13 +1,12 @@
 """
 Hybrid Retrieval Module
-Combines graph-based and vector-based retrieval for optimal results
+Combines JSON-based and vector-based retrieval for optimal results
 """
 
 import json
 import os
 from typing import List, Dict, Tuple
 from dotenv import load_dotenv
-from neo4j import GraphDatabase
 import openai
 
 load_dotenv()
@@ -18,30 +17,15 @@ MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 # ============================================================================
-# GRAPH RETRIEVER
+# JSON GRAPH RETRIEVER (Replaces Neo4j)
 # ============================================================================
 
-class GraphRetriever:
-    """Retrieves information from Neo4j knowledge graph"""
+class JsonGraphRetriever:
+    """Retrieves information from JSON knowledge graph (no Neo4j needed)"""
     
     def __init__(self):
-        self.uri = os.getenv("NEO4J_URI")
-        self.username = os.getenv("NEO4J_USERNAME", "neo4j")
-        self.password = os.getenv("NEO4J_PASSWORD")
-        self.database = os.getenv("NEO4J_DATABASE", "neo4j")
-        self.driver = None
-        self.connect()
-    
-    def connect(self):
-        """Connect to Neo4j"""
-        try:
-            self.driver = GraphDatabase.driver(
-                self.uri,
-                auth=(self.username, self.password)
-            )
-            print("✅ Connected to Neo4j for retrieval")
-        except Exception as e:
-            print(f"⚠️  Could not connect to Neo4j: {str(e)}")
+        self.graph_file = "data/knowledge_graph.json"
+        self.graph_data = self.load_graph()
     
     def extract_entities_from_query(self, query: str) -> Dict:
         """
