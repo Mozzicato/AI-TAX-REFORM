@@ -40,10 +40,12 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     """Simple health check endpoint"""
+    from datetime import datetime
     return {
         "status": "healthy",
         "service": "NTRIA API",
-        "version": "1.0.0"
+        "version": "1.0.1",
+        "timestamp": datetime.now().isoformat()
     }
 
 # ============================================================================
