@@ -8,6 +8,7 @@ import os
 from typing import List, Dict, Tuple
 from dotenv import load_dotenv
 import openai
+from app.services.json_graph import JSONGraphDB
 
 load_dotenv()
 
@@ -24,8 +25,7 @@ class JsonGraphRetriever:
     """Retrieves information from JSON knowledge graph (no Neo4j needed)"""
     
     def __init__(self):
-        self.graph_file = "data/knowledge_graph.json"
-        self.graph_data = self.load_graph()
+        self.db = JSONGraphDB()
     
     def extract_entities_from_query(self, query: str) -> Dict:
         """
@@ -81,45 +81,41 @@ class JsonGraphRetriever:
         Returns:
             List of related nodes
         """
-        
-        if not self.driver:
-            return []
-        
         try:
-            with self.driver.session(database=self.database) as session:
-                # Find the entity first
-                find_query = "MATCH (n {name: $name}) RETURN n"
-                result = session.run(find_query, {"name": entity_name})
+            # Search for nodes matching the name
+            nodes = self.db.search(entity_name)
+            if not nodes:
+                return []
+            
+            # Use the first match
+            start_node = nodes[0]
+            
+            # Get related entities
+            related = self.db.get_related_entities(start_node["id"], max_depth=depth)
+            
+            # Format results
+            results = [{"node": start_node}]
+            for item in related:
+                results.append(item)
                 
-                if not result.single():
-                    return []
-                
-                # Get related nodes up to specified depth
-                if depth == 1:
-                    query = """
-                    MATCH (n {name: $name})-[r]-(related)
-                    RETURN n, r, related
-                    LIMIT 20
-                    """
-                elif depth == 2:
-                    query = """
-                    MATCH (n {name: $name})-[r1]-(m)-[r2]-(related)
-                    RETURN n, r1, m, r2, related
-                    LIMIT 20
-                    """
-                else:
-                    query = """
-                    MATCH (n {name: $name})-[*..3]-(related)
-                    RETURN n, related
-                    LIMIT 20
-                    """
-                
-                results = session.run(query, {"name": entity_name})
-                return [record.data() for record in results]
+            return results
                 
         except Exception as e:
             print(f"⚠️  Graph search error: {str(e)}")
             return []
+
+    def get_context(self, entities: Dict) -> List[Dict]:
+        """Get context for a list of entities"""
+        context = []
+        entity_list = entities.get("entities", [])
+        
+        for entity in entity_list:
+            name = entity.get("name")
+            if name:
+                results = self.search_by_entity(name)
+                context.extend(results)
+        
+        return context
     
     def get_tax_obligations(self, taxpayer_category: str) -> List[Dict]:
         """
@@ -276,7 +272,7 @@ class HybridRetriever:
     """Combines graph and vector retrieval for optimal results"""
     
     def __init__(self):
-        self.graph_retriever = GraphRetriever()
+        self.graph_retriever = JsonGraphRetriever()
         self.vector_retriever = VectorRetriever()
     
     def retrieve(self, query: str, top_k: int = 5) -> Dict:
