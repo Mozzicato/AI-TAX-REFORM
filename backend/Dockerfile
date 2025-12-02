@@ -12,6 +12,7 @@ COPY backend/requirements.txt .
 
 # Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install google-generativeai
 
 # Copy backend code
 COPY backend/app ./app
