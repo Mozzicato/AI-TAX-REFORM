@@ -7,13 +7,13 @@ import json
 import os
 from typing import Dict, List, Tuple
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 
 load_dotenv()
 
-# Initialize OpenAI
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
+# Initialize Gemini
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+MODEL = "gemini-pro"
 
 # ============================================================================
 # PROMPT TEMPLATES
@@ -124,19 +124,20 @@ class ResponseGenerator:
         )
         
         try:
-            print("  → Generating response with LLM...")
+            print("  → Generating response with Gemini...")
             
-            response = client.chat.completions.create(
-                model=self.model,
-                messages=[
-                    {"role": "system", "content": self.system_prompt},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.5,
-                max_tokens=1500
+            model = genai.GenerativeModel(self.model)
+            full_prompt = f"{self.system_prompt}\n\n{prompt}"
+            
+            response = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.5,
+                    max_output_tokens=1500
+                )
             )
             
-            response_text = response.choices[0].message.content
+            response_text = response.text
             
             # Extract sources
             sources = self._extract_sources(retrieval_context)

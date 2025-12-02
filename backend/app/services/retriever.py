@@ -7,15 +7,15 @@ import json
 import os
 from typing import List, Dict, Tuple
 from dotenv import load_dotenv
-from openai import OpenAI
+import google.generativeai as genai
 from app.services.json_graph import JSONGraphDB
 
 load_dotenv()
 
 # Initialize connections
-client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
-EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+MODEL = "gemini-pro"
+EMBEDDING_MODEL = "models/embedding-001"
 
 # ============================================================================
 # JSON GRAPH RETRIEVER (Replaces Neo4j)
@@ -54,17 +54,24 @@ class JsonGraphRetriever:
         """
         
         try:
-            response = client.chat.completions.create(
-                model=MODEL,
-                messages=[
-                    {"role": "system", "content": "You are a tax expert. Extract entities and return only JSON."},
-                    {"role": "user", "content": prompt}
-                ],
-                temperature=0.3,
-                max_tokens=500
+            model = genai.GenerativeModel(MODEL)
+            full_prompt = f"You are a tax expert. Extract entities and return only JSON.\n\n{prompt}"
+            
+            response = model.generate_content(
+                full_prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.3,
+                    max_output_tokens=500
+                )
             )
             
-            result_text = response.choices[0].message.content
+            result_text = response.text
+            # Clean up markdown code blocks if present
+            if "```json" in result_text:
+                result_text = result_text.split("```json")[1].split("```")[0]
+            elif "```" in result_text:
+                result_text = result_text.split("```")[1].split("```")[0]
+                
             return json.loads(result_text)
         except Exception as e:
             print(f"⚠️  Error extracting entities: {str(e)}")
@@ -198,11 +205,12 @@ class VectorRetriever:
     def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text"""
         try:
-            response = client.embeddings.create(
-                input=text,
-                model=EMBEDDING_MODEL
+            result = genai.embed_content(
+                model=EMBEDDING_MODEL,
+                content=text,
+                task_type="retrieval_query"
             )
-            return response.data[0].embedding
+            return result['embedding']
         except Exception as e:
             print(f"⚠️  Embedding error: {str(e)}")
             return None
