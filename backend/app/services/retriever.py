@@ -7,13 +7,13 @@ import json
 import os
 from typing import List, Dict, Tuple
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 from app.services.json_graph import JSONGraphDB
 
 load_dotenv()
 
 # Initialize connections
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
@@ -54,7 +54,7 @@ class JsonGraphRetriever:
         """
         
         try:
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=MODEL,
                 messages=[
                     {"role": "system", "content": "You are a tax expert. Extract entities and return only JSON."},
@@ -198,11 +198,11 @@ class VectorRetriever:
     def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text"""
         try:
-            response = openai.Embedding.create(
+            response = client.embeddings.create(
                 input=text,
                 model=EMBEDDING_MODEL
             )
-            return response["data"][0]["embedding"]
+            return response.data[0].embedding
         except Exception as e:
             print(f"⚠️  Embedding error: {str(e)}")
             return None

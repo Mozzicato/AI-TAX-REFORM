@@ -7,12 +7,12 @@ import json
 import os
 from typing import Dict, List, Tuple
 from dotenv import load_dotenv
-import openai
+from openai import OpenAI
 
 load_dotenv()
 
 # Initialize OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 MODEL = os.getenv("OPENAI_MODEL", "gpt-4")
 
 # ============================================================================
@@ -126,7 +126,7 @@ class ResponseGenerator:
         try:
             print("  → Generating response with LLM...")
             
-            response = openai.ChatCompletion.create(
+            response = client.chat.completions.create(
                 model=self.model,
                 messages=[
                     {"role": "system", "content": self.system_prompt},
