@@ -1,7 +1,7 @@
 import axios from "axios";
 
-// Use local proxy to avoid CORS/port issues in Codespaces
-const API_BASE_URL = "/api/proxy";
+// Use Railway backend URL (configured via environment variable)
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
 // Create axios instance
 const api = axios.create({
@@ -91,8 +91,11 @@ export const graphSearch = async (query, filters = {}) => {
  */
 export const checkHealth = async () => {
   try {
-    // Use proxied health endpoint
-    const response = await axios.get("/backend-health");
+    // Call the Railway backend health endpoint directly
+    const backendUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+    const response = await axios.get(`${backendUrl}/health`, {
+      timeout: 5000,
+    });
     return response.data;
   } catch (error) {
     console.error("Error checking health:", error);

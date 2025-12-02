@@ -22,7 +22,10 @@ app = FastAPI(
 )
 
 # CORS Configuration
-ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001").split(",")
+ALLOWED_ORIGINS = os.getenv(
+    "ALLOWED_ORIGINS",
+    "http://localhost:3000,http://localhost:3001,https://ntria-frontend-3ohn90kjn-mubarak-s-projects-93332589.vercel.app"
+).split(",")
 
 app.add_middleware(
     CORSMiddleware,
