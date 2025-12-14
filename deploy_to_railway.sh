@@ -68,7 +68,7 @@ railway_instructions() {
     echo "5. Add Environment Variables in Railway:"
     echo "   ✓ NEO4J_URI"
     echo "   ✓ OPENAI_API_KEY"
-    echo "   ✓ PINECONE_API_KEY"
+    echo "   ✓ Graph DB configured (JSON-based)"
     echo "   ✓ ALLOWED_ORIGINS"
     echo ""
     echo "6. Click 'Deploy' and wait for completion"

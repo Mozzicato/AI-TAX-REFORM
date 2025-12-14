@@ -52,7 +52,7 @@ Visit **http://localhost:3000**
 | Frontend | Next.js + React + Tailwind CSS |
 | Backend | FastAPI + Python |
 | Graph DB | Neo4j |
-| Vector DB | Pinecone / Chroma |
+| Vector DB | JSON-based (local) |
 | LLM | OpenAI GPT-4 |
 | Deployment | Vercel / Render |
 

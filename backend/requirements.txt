@@ -6,8 +6,7 @@ fastapi==0.104.1
 uvicorn[standard]==0.24.0
 python-multipart==0.0.6
 
-# Vector Database
-pinecone-client>=3.0.0
+# Vector Database (JSON-based - no external deps needed)
 
 # LLM & Embeddings
 google-generativeai>=0.3.0

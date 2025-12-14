@@ -69,23 +69,56 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 detail="Message must be at least 2 characters"
             )
         
-        # Use the Graph RAG pipeline
-        from app.services.rag_pipeline import get_rag_pipeline
+        # Check if we're in demo mode
+        from app.config import get_settings
+        settings = get_settings()
         
-        pipeline = get_rag_pipeline()
-        
-        # Convert Pydantic models to dicts for the pipeline
-        history = []
-        if request.conversation_history:
-            history = [
-                {"role": msg.role, "content": msg.content} 
-                for msg in request.conversation_history
+        if settings.demo_mode:
+            # Use demo service
+            from app.services.demo_service import DemoService
+            demo = DemoService()
+            result = demo.get_demo_response(request.message)
+            
+            # Convert sources
+            sources = [
+                Source(**source) for source in result.get("sources", [])
             ]
             
-        result = pipeline.answer_query(
-            query=request.message,
-            history=history
-        )
+            return ChatResponse(
+                answer=result["answer"],
+                sources=sources,
+                confidence=result["confidence"],
+                session_id=request.session_id,
+                retrieval_stats=result.get("retrieval_stats"),
+                valid=result.get("valid", True)
+            )
+        
+        # Use the demo service or RAG pipeline based on config  
+        from app.config import get_settings
+        settings = get_settings()
+        
+        if settings.demo_mode:
+            # Use demo service when API keys are missing
+            from app.services.demo_service import DemoService
+            demo_service = DemoService()
+            result = demo_service.get_demo_response(request.message)
+        else:
+            # Use the Graph RAG pipeline
+            from app.services.rag_pipeline import get_rag_pipeline
+            pipeline = get_rag_pipeline()
+            
+            # Convert Pydantic models to dicts for the pipeline
+            history = []
+            if request.conversation_history:
+                history = [
+                    {"role": msg.role, "content": msg.content} 
+                    for msg in request.conversation_history
+                ]
+                
+            result = pipeline.answer_query(
+                query=request.message,
+                history=history
+            )
         
         # Convert sources
         sources = [

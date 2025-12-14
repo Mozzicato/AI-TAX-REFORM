@@ -95,6 +95,72 @@ class VectorDBAdapter:
         """Search vector database"""
         raise NotImplementedError
 
+class JSONGraphAdapter(VectorDBAdapter):
+    """JSON-based graph storage - no external vector DB needed"""
+    
+    def __init__(self):
+        self.graph_file = "/workspaces/AI-TAX-REFORM/data/knowledge_graph.json"
+        os.makedirs(os.path.dirname(self.graph_file), exist_ok=True)
+        print("✅ Using local JSON graph storage")
+
+    def add_chunks(self, chunks: List[Dict]) -> bool:
+        """Add chunks to JSON graph file"""
+        try:
+            # Load existing graph or create new
+            if os.path.exists(self.graph_file):
+                with open(self.graph_file, 'r') as f:
+                    graph = json.load(f)
+            else:
+                graph = {"chunks": [], "metadata": {"total_chunks": 0}}
+            
+            # Add new chunks
+            graph["chunks"].extend(chunks)
+            graph["metadata"]["total_chunks"] = len(graph["chunks"])
+            
+            # Save updated graph
+            with open(self.graph_file, 'w') as f:
+                json.dump(graph, f, indent=2)
+            
+            print(f"✅ Saved {len(chunks)} chunks to JSON graph")
+            return True
+            
+        except Exception as e:
+            print(f"❌ Error saving chunks to JSON graph: {str(e)}")
+            return False
+
+    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Dict]:
+        """Basic text search in JSON graph (no embedding search)"""
+        if not os.path.exists(self.graph_file):
+            return []
+        
+        try:
+            with open(self.graph_file, 'r') as f:
+                graph = json.load(f)
+            
+            chunks = graph.get("chunks", [])
+            # Simple keyword matching instead of vector similarity
+            query_words = set(str(query_embedding).lower().split())
+            
+            scored_chunks = []
+            for chunk in chunks:
+                text = chunk.get("text", "").lower()
+                # Simple scoring based on keyword overlap
+                score = len(set(text.split()) & query_words) / max(len(query_words), 1)
+                if score > 0:
+                    scored_chunks.append({
+                        "score": score,
+                        "text": chunk.get("text", ""),
+                        "metadata": chunk.get("metadata", {})
+                    })
+            
+            # Sort by score and return top_k
+            scored_chunks.sort(key=lambda x: x["score"], reverse=True)
+            return scored_chunks[:top_k]
+            
+        except Exception as e:
+            print(f"❌ Error searching JSON graph: {str(e)}")
+            return []
+
 class PineconeAdapter(VectorDBAdapter):
     """Pinecone vector database adapter"""
     
@@ -234,15 +300,15 @@ class ChromaAdapter(VectorDBAdapter):
 def get_vector_db_adapter() -> VectorDBAdapter:
     """Get appropriate vector database adapter based on config"""
     
-    db_type = os.getenv("VECTOR_DB_TYPE", "pinecone").lower()
+    db_type = os.getenv("VECTOR_DB_TYPE", "json").lower()
     
-    if db_type == "pinecone":
-        return PineconeAdapter()
+    if db_type == "json":
+        return JSONGraphAdapter()
     elif db_type == "chroma":
         return ChromaAdapter()
     else:
-        print(f"❌ Unknown vector database type: {db_type}")
-        return None
+        print(f"⚠️  Using JSON adapter as fallback for: {db_type}")
+        return JSONGraphAdapter()
 
 def load_chunks(input_dir: str = "data/chunked") -> List[Dict]:
     """Load document chunks from files"""
