@@ -1,0 +1,38 @@
+# Example Render manifest for the backend service
+# NOTE: This file is a template. Do NOT store secret values here; instead create secrets in the Render dashboard
+
+services:
+  - name: ntria-backend
+    type: web
+    env: docker
+    repo: https://github.com/Mozzicato/AI-TAX-REFORM
+    branch: main
+    dockerfilePath: backend/Dockerfile
+    plan: starter
+    region: oregon
+    autoDeploy: true
+    healthCheckPath: /health
+    # The following envVars are placeholders. Set their values in the Render dashboard or via the CLI using `render secrets create`.
+    envVars:
+      - key: GOOGLE_API_KEY
+        value: ""
+      - key: GEMINI_API_KEY
+        value: ""
+      - key: PINECONE_API_KEY
+        value: ""
+      - key: PINECONE_ENVIRONMENT
+        value: ""
+      - key: PINECONE_INDEX_NAME
+        value: "ntria-tax-documents"
+      - key: NEO4J_URI
+        value: ""
+      - key: NEO4J_USER
+        value: "neo4j"
+      - key: NEO4J_PASSWORD
+        value: ""
+      - key: OPENAI_API_KEY
+        value: ""
+      - key: ALLOWED_ORIGINS
+        value: "*"
+      - key: BACKEND_PORT
+        value: "8000"
