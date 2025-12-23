@@ -1,6 +1,6 @@
 import axios from "axios";
 
-// Use Railway backend URL (configured via environment variable)
+// Use backend URL from environment variable (Render or local)
 const API_ROOT_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 // API endpoints are under /api/v1
 const API_BASE_URL = `${API_ROOT_URL}/api/v1`;
@@ -93,11 +93,8 @@ export const graphSearch = async (query, filters = {}) => {
  */
 export const checkHealth = async () => {
   try {
-    // Call the Railway backend health endpoint directly
-    // Health check is at the root, not under /api/v1
-    const response = await axios.get(`${API_ROOT_URL}/health`, {
-      timeout: 5000,
-    });
+    // Call the backend health endpoint directly (root path)
+    const response = await axios.get(`${API_ROOT_URL}/health`, { timeout: 5000 });
     return response.data;
   } catch (error) {
     console.error("Error checking health:", error);
