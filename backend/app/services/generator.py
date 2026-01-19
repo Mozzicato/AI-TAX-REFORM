@@ -26,10 +26,10 @@ SYSTEM_PROMPT = """
 You are NTRIA (Nigeria Tax Reform Intelligence Assistant), a tax expert for the 2025 Nigerian Tax Reform.
 
 Guidelines:
-1. DATA & NUMBERS: Use tax rates (%), income bands (₦), and deadlines from the context. If a user provides income, estimate their tax using the tables in the context.
-2. CITATIONS: You MUST mention the document name and page number for every major claim.
-3. ADVICE: If specific detail is missing, apply the general principles of the 2025 Act (e.g., higher income usually means higher tax bands).
-4. TONE: Professional and conversational.
+1. GREETINGS: For general greetings (e.g., "hi", "hello"), respond briefly and naturally as a professional assistant. Do NOT use the detailed structured format for simple greetings.
+2. DATA & NUMBERS: Use tax rates (%), income bands (₦), and deadlines from the context for tax queries. If a user provides income, estimate their tax using the tables in the context.
+3. CITATIONS: You MUST mention the document name and page number for every major claim in tax-related answers.
+4. ADVICE: If specific detail is missing, apply the general principles of the 2025 Act.
 5. NO LEGAL ADVICE: Remind users to consult FIRS and professionals for official filings.
 """
 
@@ -42,12 +42,26 @@ Conversation History:
 
 User Question: {query}
 
-Please provide a detailed, data-driven response. 
-Format:
-1. Summary Answer
-2. Technical Breakdown (using numbers/percentages from context)
-3. Actionable Next Steps
-4. Sources: [List of Citations]
+Instructions:
+- If this is a simple greeting or non-tax question, be brief and conversational.
+- If this is a technical tax question, provide a detailed data-driven response following this format:
+  1. Summary Answer
+  2. Technical Breakdown (using numbers/percentages from context)
+  3. Actionable Next Steps
+  4. Sources: [List of Citations]
+"""
+
+GREETING_TEMPLATE = """
+Conversation History:
+{history}
+
+User Question: {query}
+
+Instructions:
+- This is a greeting or general introductory message.
+- Respond warmly, briefly, and naturally as NTRIA.
+- Briefly mention that you can help with Nigerian Tax Reform questions if appropriate.
+- Do NOT use any structured numerical sections or citations.
 """
 
 # ============================================================================
@@ -105,6 +119,15 @@ class ResponseGenerator:
             
         return "\n\n".join(context_parts)
     
+    def is_greeting(self, query: str) -> bool:
+        """Check if query is a simple greeting"""
+        greetings = ["hi", "hello", "hey", "greetings", "good morning", "good afternoon", "good evening", "what's up", "howdy"]
+        words = query.lower().strip().split()
+        if not words:
+            return False
+        # If query is short and starts with a greeting, or is just a greeting
+        return len(words) <= 3 and any(g in query.lower() for g in greetings)
+
     def generate_response(self, query: str, retrieval_context: Dict, history: List[Dict] = None) -> Dict:
         """
         Generate LLM response from context
@@ -118,19 +141,25 @@ class ResponseGenerator:
             Dictionary with response, sources, confidence, etc.
         """
         
-        # Format context
-        formatted_context = self.format_context(retrieval_context)
+        # Format context and history
         formatted_history = self.format_history(history)
         
-        # Build prompt
-        prompt = RESPONSE_TEMPLATE.format(
-            context=formatted_context,
-            history=formatted_history,
-            query=query
-        )
+        # Decision: Use different template for greetings
+        if self.is_greeting(query):
+            prompt = GREETING_TEMPLATE.format(
+                history=formatted_history,
+                query=query
+            )
+        else:
+            formatted_context = self.format_context(retrieval_context)
+            prompt = RESPONSE_TEMPLATE.format(
+                context=formatted_context,
+                history=formatted_history,
+                query=query
+            )
         
         try:
-            print("  → Generating response with Gemini...")
+            print(f"  → Generating {'greeting' if self.is_greeting(query) else 'tax'} response...")
             
             model = genai.GenerativeModel(self.model)
             full_prompt = f"{self.system_prompt}\n\n{prompt}"
@@ -138,18 +167,20 @@ class ResponseGenerator:
             response = model.generate_content(
                 full_prompt,
                 generation_config=genai.types.GenerationConfig(
-                    temperature=0.5,
+                    temperature=0.7 if self.is_greeting(query) else 0.3,
                     max_output_tokens=1500
                 )
             )
             
             response_text = response.text
             
-            # Extract sources
-            sources = self._extract_sources(retrieval_context)
+            # Extract sources (only for non-greetings)
+            sources = []
+            if not self.is_greeting(query):
+                sources = self._extract_sources(retrieval_context)
             
             # Calculate confidence
-            confidence = self._calculate_confidence(retrieval_context)
+            confidence = 1.0 if self.is_greeting(query) else self._calculate_confidence(retrieval_context)
             
             return {
                 "response": response_text,

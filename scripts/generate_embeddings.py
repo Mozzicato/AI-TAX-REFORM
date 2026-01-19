@@ -72,7 +72,7 @@ def generate_embeddings_batch(chunks: List[Dict]) -> List[Dict]:
             chunk_with_embedding = {
                 **chunk,
                 "embedding": embedding,
-                "embedding_model": EMBEDDING_MODEL
+                "embedding_model": EMBEDDING_MODEL_GEMINI
             }
             chunks_with_embeddings.append(chunk_with_embedding)
             
