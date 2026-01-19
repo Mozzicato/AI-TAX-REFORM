@@ -7,14 +7,23 @@ from functools import lru_cache
 
 class Settings:
     def __init__(self):
-        # API Keys
-        self.google_api_key = os.getenv("GOOGLE_API_KEY", "")
+        # AI Keys - check for both GOOGLE_API_KEY and GEMINI_API_KEY
+        self.google_api_key = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or ""
         
-        # Demo mode if API keys are missing
+        # Strip whitespace or quotes that might be added by environment managers
+        self.google_api_key = self.google_api_key.strip().strip("'").strip('"')
+        
+        # Demo mode if API keys are missing or invalid
         self.demo_mode = (
             not self.google_api_key or 
-            self.google_api_key == "demo_key_placeholder"
+            self.google_api_key == "demo_key_placeholder" or
+            len(self.google_api_key) < 10
         )
+        
+        if not self.demo_mode:
+            print(f"✅ AI API Key detected (length: {len(self.google_api_key)}) - Enabling RAG Mode")
+        else:
+            print(f"⚠️  No valid API Key found - Running in DEMO MODE")
         
         # Database
         self.neo4j_uri = os.getenv("NEO4J_URI", "bolt://localhost:7687")

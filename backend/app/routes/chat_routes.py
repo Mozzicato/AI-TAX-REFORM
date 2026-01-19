@@ -69,41 +69,17 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 detail="Message must be at least 2 characters"
             )
         
-        # Check if we're in demo mode
+        # Get settings and decide mode
         from app.config import get_settings
         settings = get_settings()
         
         if settings.demo_mode:
-            # Use demo service
+            # === DEMO MODE PATH ===
             from app.services.demo_service import DemoService
             demo = DemoService()
             result = demo.get_demo_response(request.message)
-            
-            # Convert sources
-            sources = [
-                Source(**source) for source in result.get("sources", [])
-            ]
-            
-            return ChatResponse(
-                answer=result["answer"],
-                sources=sources,
-                confidence=result["confidence"],
-                session_id=request.session_id,
-                retrieval_stats=result.get("retrieval_stats"),
-                valid=result.get("valid", True)
-            )
-        
-        # Use the demo service or RAG pipeline based on config  
-        from app.config import get_settings
-        settings = get_settings()
-        
-        if settings.demo_mode:
-            # Use demo service when API keys are missing
-            from app.services.demo_service import DemoService
-            demo_service = DemoService()
-            result = demo_service.get_demo_response(request.message)
         else:
-            # Use the Graph RAG pipeline
+            # === FULL RAG MODE PATH ===
             from app.services.rag_pipeline import get_rag_pipeline
             pipeline = get_rag_pipeline()
             
@@ -120,15 +96,20 @@ async def chat(request: ChatRequest) -> ChatResponse:
                 history=history
             )
         
-        # Convert sources
-        sources = [
-            Source(**source) for source in result.get("sources", [])
-        ]
+        # Convert sources to Source objects
+        sources = []
+        for s in result.get("sources", []):
+            try:
+                sources.append(Source(**s))
+            except:
+                # Handle cases where source dict might be malformed
+                if isinstance(s, dict):
+                    sources.append(Source(title=s.get("title", "Unknown"), type=s.get("type", "document")))
         
         return ChatResponse(
             answer=result["answer"],
             sources=sources,
-            confidence=result["confidence"],
+            confidence=result.get("confidence", 0.0),
             session_id=request.session_id,
             retrieval_stats=result.get("retrieval_stats"),
             valid=result.get("valid", True)

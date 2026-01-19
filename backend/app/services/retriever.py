@@ -13,7 +13,10 @@ from app.services.json_graph import JSONGraphDB
 load_dotenv()
 
 # Initialize connections
-genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
+from app.config import get_settings
+settings = get_settings()
+if settings.google_api_key:
+    genai.configure(api_key=settings.google_api_key)
 MODEL = "gemini-2.5-flash"
 EMBEDDING_MODEL = "models/embedding-001"
 
