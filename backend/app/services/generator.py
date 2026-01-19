@@ -13,7 +13,7 @@ load_dotenv()
 
 # Initialize Gemini
 genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-MODEL = "gemini-pro"
+MODEL = "gemini-2.5-flash"
 
 # ============================================================================
 # PROMPT TEMPLATES
