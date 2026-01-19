@@ -15,6 +15,7 @@ export interface Message {
   role: 'user' | 'assistant';
   content: string;
   timestamp?: string;
+  sources?: Source[];
 }
 
 export interface Source {

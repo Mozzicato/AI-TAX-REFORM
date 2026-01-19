@@ -48,7 +48,21 @@ class DemoService:
         """Return a demo response based on the message content"""
         
         # Simple keyword matching for better responses
-        message_lower = message.lower()
+        message_lower = message.lower().strip()
+        
+        # Check for greetings first
+        if any(word in message_lower for word in ["hi", "hello", "hey", "greetings", "what's up", "how are you", "howdy"]):
+            return {
+                "answer": "Hello! 👋 I'm NTRIA (Nigeria Tax Reform Intelligence Assistant). I'm here to help you understand the 2025 Nigerian Tax Reform Act and answer any questions about taxes in Nigeria.\n\nI can help you with:\n• **Personal Income Tax (PIT)** - Understanding tax bands, deductions, and filing\n• **Value Added Tax (VAT)** - Tax rates, exemptions, and compliance\n• **Business Taxes** - Corporate income tax, SME incentives, and enterprise tax\n• **Tax Filing** - Deadlines, required documents, and procedures\n• **Tax Incentives** - Pioneer status, export benefits, and special programs\n\nWhat would you like to know about Nigerian taxes?",
+                "sources": [],
+                "confidence": 1.0,
+                "retrieval_stats": {
+                    "mode": "demo",
+                    "query_type": "greeting",
+                    "retrieved_chunks": 0
+                },
+                "valid": True
+            }
         
         if any(word in message_lower for word in ["vat", "value added", "consumption"]):
             response = self.sample_responses[0]
@@ -59,8 +73,18 @@ class DemoService:
         elif any(word in message_lower for word in ["deadline", "filing", "due date", "when"]):
             response = self.sample_responses[3]
         else:
-            # Random response for other questions
-            response = random.choice(self.sample_responses)
+            # Return a helpful message for unknown questions instead of random tax response
+            response = {
+                "answer": "I appreciate your question! However, I don't have specific information to answer that in my current knowledge base.\n\nI can best help you with:\n• Personal Income Tax (PIT)\n• Value Added Tax (VAT)\n• Small & Medium Enterprise (SME) tax incentives\n• Tax filing deadlines and compliance\n• General tax reform information\n\nCould you rephrase your question related to one of these topics, or ask me something like \"What is VAT?\" or \"What are the tax deadlines for 2025?\"",
+                "sources": [],
+                "confidence": 0.3,
+                "retrieval_stats": {
+                    "mode": "demo",
+                    "query_type": "unknown",
+                    "retrieved_chunks": 0
+                },
+                "valid": True
+            }
         
         return {
             "answer": response["answer"],

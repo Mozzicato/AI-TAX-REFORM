@@ -282,31 +282,83 @@ class HybridRetriever:
     def __init__(self):
         self.graph_retriever = JsonGraphRetriever()
         self.vector_retriever = VectorRetriever()
+        self.model = MODEL
+
+    def _refine_query(self, query: str, history: List[Dict] = None) -> str:
+        """
+        Refine the user query based on conversation history to make it standalone
+        """
+        if not history or len(history) == 0:
+            return query
+            
+        # Format history for the prompt
+        history_str = ""
+        for msg in history[-5:]:  # Last 5 messages for context
+            role = "User" if msg.get("role") == "user" else "Assistant"
+            history_str += f"{role}: {msg.get('content')}\n"
+            
+        prompt = f"""
+        Given the following conversation history and a follow-up question, 
+        rephrase the follow-up question to be a standalone search query that 
+        captures all necessary context. Do not answer the question, just rephrase it.
+        
+        If the question is already standalone, return it exactly as is.
+        
+        Conversation History:
+        {history_str}
+        
+        Follow-up Question: {query}
+        
+        Standalone Query:
+        """
+        
+        try:
+            model = genai.GenerativeModel(self.model)
+            response = model.generate_content(
+                prompt,
+                generation_config=genai.types.GenerationConfig(
+                    temperature=0.1,
+                    max_output_tokens=200
+                )
+            )
+            refined_query = response.text.strip()
+            if refined_query:
+                print(f"🔄 Refined query: '{query}' -> '{refined_query}'")
+                return refined_query
+        except Exception as e:
+            print(f"⚠️  Error refining query: {str(e)}")
+            
+        return query
     
-    def retrieve(self, query: str, top_k: int = 5) -> Dict:
+    def retrieve(self, query: str, top_k: int = 5, history: List[Dict] = None) -> Dict:
         """
         Perform hybrid retrieval combining graph and vector search
         
         Args:
             query: User question
             top_k: Number of results
+            history: Optional conversation history
             
         Returns:
             Comprehensive context with graph and vector results
         """
         
-        print(f"\n🔍 Retrieving context for: '{query}'")
+        # Refine the query based on history to ensure better retrieval
+        search_query = self._refine_query(query, history)
+        
+        print(f"\n🔍 Retrieving context for search: '{search_query}'")
         
         context = {
             "query": query,
+            "search_query": search_query,
             "graph_results": [],
             "vector_results": [],
             "fused_results": []
         }
         
-        # Extract entities from query
+        # Extract entities from refined query
         print("  → Extracting entities from query...")
-        entities = self.graph_retriever.extract_entities_from_query(query)
+        entities = self.graph_retriever.extract_entities_from_query(search_query)
         
         # Graph-based retrieval
         if entities.get("entities"):
@@ -318,7 +370,7 @@ class HybridRetriever:
         
         # Vector-based retrieval
         print("  → Performing semantic search...")
-        vector_results = self.vector_retriever.search(query, top_k)
+        vector_results = self.vector_retriever.search(search_query, top_k)
         context["vector_results"] = vector_results
         
         # Fuse results

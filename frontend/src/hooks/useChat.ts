@@ -83,6 +83,7 @@ export function useChat(options: UseChatOptions = {}) {
           role: 'assistant',
           content: response.answer,
           timestamp: new Date().toISOString(),
+          sources: response.sources,
         };
 
         conversationHistoryRef.current.push(assistantMessage);

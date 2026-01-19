@@ -17,11 +17,11 @@ class GraphRAGPipeline:
         Process a user query through the RAG pipeline
         """
         # 1. Retrieve context
-        retrieval_context = self.retriever.retrieve(query)
+        # We pass history to retriever to help with query refinement/context
+        retrieval_context = self.retriever.retrieve(query, history=history)
         
-        # 2. Generate answer
-        # Note: Generator doesn't currently use history, but we could add it later
-        result = self.generator.generate_response(query, retrieval_context)
+        # 2. Generate answer with history awareness
+        result = self.generator.generate_response(query, retrieval_context, history=history)
         
         # 3. Format result for API
         return {

@@ -117,7 +117,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({
                 key={index}
                 message={message.content}
                 isBot={message.role === 'assistant'}
-                sources={message.role === 'assistant' ? [] : undefined}
+                sources={message.role === 'assistant' ? (message as any).sources : undefined}
               />
             ))}
             {loading && (

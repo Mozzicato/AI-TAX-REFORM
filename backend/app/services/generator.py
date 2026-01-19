@@ -28,14 +28,17 @@ understand their tax obligations and navigate the tax system.
 
 Guidelines:
 1. ALWAYS base your answers on the provided context from official tax documents
-2. If uncertain or if the context doesn't contain relevant information, clearly state 
+2. Use the Conversation History to understand the user's focus and provide relevant follow-up information
+3. If uncertain or if the context doesn't contain relevant information, clearly state 
    "I don't have complete information on this" rather than speculating
-3. Explain tax concepts in simple, plain language
-4. Provide actionable next steps when appropriate
-5. Always cite the source of your information
-6. Use bullet points for clarity when listing multiple items
-7. Break down complex processes into steps
-8. Acknowledge if a question is outside the scope of tax reform
+4. Explain tax concepts in simple, plain language
+5. Provide actionable next steps when appropriate
+6. Always cite the source of your information using [Source: Title, Page X] format
+7. Use bullet points for clarity when listing multiple items
+8. Break down complex processes into steps
+9. Acknowledge if a question is outside the scope of tax reform
+10. Maintain a helpful, professional, and conversational tone. If the user asks a follow-up 
+    like "how does that work?", refer to the previously mentioned tax concept in your answer.
 
 IMPORTANT: Never provide personal financial or legal advice. Always recommend consulting 
 with tax professionals for individual situations.
@@ -45,10 +48,13 @@ RESPONSE_TEMPLATE = """
 Context from official tax documents:
 {context}
 
+Conversation History:
+{history}
+
 User Question:
 {query}
 
-Please provide a clear, helpful response based on the above context.
+Please provide a clear, helpful response based on the above context and conversation history.
 Include citations from the source documents.
 """
 
@@ -62,6 +68,20 @@ class ResponseGenerator:
     def __init__(self):
         self.model = MODEL
         self.system_prompt = SYSTEM_PROMPT
+    
+    def format_history(self, history: List[Dict]) -> str:
+        """Format conversation history for prompt"""
+        if not history:
+            return "No previous history."
+        
+        # Take last 10 messages to provide deep context within the session
+        history_parts = []
+        for msg in history[-10:]:
+            role = "User" if msg.get("role") == "user" else "Assistant"
+            content = msg.get("content", "")
+            history_parts.append(f"{role}: {content}")
+        
+        return "\n".join(history_parts)
     
     def format_context(self, retrieval_context: Dict) -> str:
         """
@@ -102,13 +122,14 @@ class ResponseGenerator:
         
         return "\n".join(context_parts)
     
-    def generate_response(self, query: str, retrieval_context: Dict) -> Dict:
+    def generate_response(self, query: str, retrieval_context: Dict, history: List[Dict] = None) -> Dict:
         """
         Generate LLM response from context
         
         Args:
             query: User question
             retrieval_context: Output from hybrid retriever
+            history: Optional conversation history
             
         Returns:
             Dictionary with response, sources, confidence, etc.
@@ -116,10 +137,12 @@ class ResponseGenerator:
         
         # Format context
         formatted_context = self.format_context(retrieval_context)
+        formatted_history = self.format_history(history)
         
         # Build prompt
         prompt = RESPONSE_TEMPLATE.format(
             context=formatted_context,
+            history=formatted_history,
             query=query
         )
         
