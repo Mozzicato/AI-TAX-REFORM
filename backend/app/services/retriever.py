@@ -17,7 +17,7 @@ from app.config import get_settings
 settings = get_settings()
 if settings.google_api_key:
     genai.configure(api_key=settings.google_api_key)
-MODEL = "gemini-1.5-flash"
+MODEL = "gemma-3-27b-it"
 EMBEDDING_MODEL = "models/embedding-001"
 
 # ============================================================================
