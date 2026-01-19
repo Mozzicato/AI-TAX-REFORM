@@ -206,21 +206,7 @@ class VectorRetriever:
         return None
     
     def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding using OpenAI if available, else Gemini"""
-        openai_key = os.getenv("OPENAI_API_KEY")
-        if openai_key and openai_key != "demo_key_placeholder":
-            try:
-                import openai
-                openai.api_key = openai_key
-                response = openai.Embedding.create(
-                    input=text,
-                    model="text-embedding-3-small"
-                )
-                return response["data"][0]["embedding"]
-            except Exception as e:
-                print(f"⚠️  OpenAI Embedding error: {str(e)}")
-        
-        # Fallback to Gemini
+        """Generate embedding using Gemini (Primary)"""
         try:
             result = genai.embed_content(
                 model=EMBEDDING_MODEL,

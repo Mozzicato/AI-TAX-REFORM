@@ -12,16 +12,14 @@ import google.generativeai as genai
 
 load_dotenv()
 
-# Initialize API Keys
-OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+# Initialize Google AI for Embeddings
 GOOGLE_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
-
-openai.api_key = OPENAI_KEY
-EMBEDDING_MODEL_OPENAI = "text-embedding-3-small"
 EMBEDDING_MODEL_GEMINI = "models/embedding-001"
 
 if GOOGLE_KEY:
     genai.configure(api_key=GOOGLE_KEY)
+else:
+    print("⚠️  Warning: GOOGLE_API_KEY not found. Embedding generation will fail.")
 
 # ============================================================================
 # EMBEDDING GENERATION
@@ -29,32 +27,21 @@ if GOOGLE_KEY:
 
 def generate_embedding(text: str) -> List[float]:
     """
-    Generate embedding using OpenAI (if key exists) or Gemini fallback
+    Generate embedding using Gemini (primary model)
     """
-    # 1. Try OpenAI
-    if OPENAI_KEY and OPENAI_KEY != "demo_key_placeholder":
-        try:
-            response = openai.Embedding.create(
-                input=text,
-                model=EMBEDDING_MODEL_OPENAI
-            )
-            return response["data"][0]["embedding"]
-        except Exception as e:
-            print(f"⚠️ OpenAI Embedding failed, falling back: {str(e)}")
+    if not GOOGLE_KEY:
+        return None
 
-    # 2. Try Gemini
-    if GOOGLE_KEY:
-        try:
-            result = genai.embed_content(
-                model=EMBEDDING_MODEL_GEMINI,
-                content=text,
-                task_type="retrieval_document"
-            )
-            return result['embedding']
-        except Exception as e:
-            print(f"❌ Gemini Embedding error: {str(e)}")
-    
-    return None
+    try:
+        result = genai.embed_content(
+            model=EMBEDDING_MODEL_GEMINI,
+            content=text,
+            task_type="retrieval_document"
+        )
+        return result['embedding']
+    except Exception as e:
+        print(f"❌ Gemini Embedding error: {str(e)}")
+        return None
 
 def generate_embeddings_batch(chunks: List[Dict]) -> List[Dict]:
     """
