@@ -64,23 +64,23 @@ class DemoService:
                 "valid": True
             }
         
-        if any(word in message_lower for word in ["vat", "value added", "consumption"]):
+        if any(word in message_lower for word in ["vat", "value added", "consumption", "goods", "services", "7.5", "charge"]):
             response = self.sample_responses[0]
-        elif any(word in message_lower for word in ["personal income", "pit", "salary", "individual"]):
+        elif any(word in message_lower for word in ["personal income", "pit", "salary", "individual", "earn", "pay", "million", "income", "taxed", "taxing"]):
             response = self.sample_responses[1]
-        elif any(word in message_lower for word in ["sme", "small business", "medium enterprise"]):
+        elif any(word in message_lower for word in ["sme", "small business", "medium enterprise", "company", "startup", "incentive"]):
             response = self.sample_responses[2]
-        elif any(word in message_lower for word in ["deadline", "filing", "due date", "when"]):
+        elif any(word in message_lower for word in ["deadline", "filing", "due date", "when", "late", "penalty", "date"]):
             response = self.sample_responses[3]
         else:
-            # Return a helpful message for unknown questions instead of random tax response
+            # Return a more helpful message if we're in demo mode
             response = {
-                "answer": "I appreciate your question! However, I don't have specific information to answer that in my current knowledge base.\n\nI can best help you with:\n• Personal Income Tax (PIT)\n• Value Added Tax (VAT)\n• Small & Medium Enterprise (SME) tax incentives\n• Tax filing deadlines and compliance\n• General tax reform information\n\nCould you rephrase your question related to one of these topics, or ask me something like \"What is VAT?\" or \"What are the tax deadlines for 2025?\"",
+                "answer": "I see you're asking about something specific! I'm currently running in **Demo Mode**, so I can only provide detailed answers for topics like **VAT, Personal Income Tax, SME incentives, and Filing Deadlines**.\n\nTo enable my full Graph RAG brain and have me answer *any* tax question using the live 2025 Tax Reform documents, please ensure the `GOOGLE_API_KEY` is correctly set in your environment configuration.\n\nIn the meantime, feel free to ask me about 'VAT rates' or 'How much income tax do I pay?'.",
                 "sources": [],
                 "confidence": 0.3,
                 "retrieval_stats": {
                     "mode": "demo",
-                    "query_type": "unknown",
+                    "query_type": "unknown-demo",
                     "retrieved_chunks": 0
                 },
                 "valid": True
