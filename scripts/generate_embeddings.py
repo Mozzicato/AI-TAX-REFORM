@@ -8,12 +8,20 @@ import os
 from typing import List, Dict
 from dotenv import load_dotenv
 import openai
+import google.generativeai as genai
 
 load_dotenv()
 
-# Initialize OpenAI
-openai.api_key = os.getenv("OPENAI_API_KEY")
-EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+# Initialize API Keys
+OPENAI_KEY = os.getenv("OPENAI_API_KEY")
+GOOGLE_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY")
+
+openai.api_key = OPENAI_KEY
+EMBEDDING_MODEL_OPENAI = "text-embedding-3-small"
+EMBEDDING_MODEL_GEMINI = "models/embedding-001"
+
+if GOOGLE_KEY:
+    genai.configure(api_key=GOOGLE_KEY)
 
 # ============================================================================
 # EMBEDDING GENERATION
@@ -21,23 +29,32 @@ EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 def generate_embedding(text: str) -> List[float]:
     """
-    Generate embedding for text using OpenAI API
-    
-    Args:
-        text: Text to embed
-        
-    Returns:
-        Embedding vector (list of floats)
+    Generate embedding using OpenAI (if key exists) or Gemini fallback
     """
-    try:
-        response = openai.Embedding.create(
-            input=text,
-            model=EMBEDDING_MODEL
-        )
-        return response["data"][0]["embedding"]
-    except Exception as e:
-        print(f"❌ Error generating embedding: {str(e)}")
-        return None
+    # 1. Try OpenAI
+    if OPENAI_KEY and OPENAI_KEY != "demo_key_placeholder":
+        try:
+            response = openai.Embedding.create(
+                input=text,
+                model=EMBEDDING_MODEL_OPENAI
+            )
+            return response["data"][0]["embedding"]
+        except Exception as e:
+            print(f"⚠️ OpenAI Embedding failed, falling back: {str(e)}")
+
+    # 2. Try Gemini
+    if GOOGLE_KEY:
+        try:
+            result = genai.embed_content(
+                model=EMBEDDING_MODEL_GEMINI,
+                content=text,
+                task_type="retrieval_document"
+            )
+            return result['embedding']
+        except Exception as e:
+            print(f"❌ Gemini Embedding error: {str(e)}")
+    
+    return None
 
 def generate_embeddings_batch(chunks: List[Dict]) -> List[Dict]:
     """
