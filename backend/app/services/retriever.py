@@ -17,7 +17,7 @@ from app.config import get_settings
 settings = get_settings()
 if settings.google_api_key:
     genai.configure(api_key=settings.google_api_key)
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-1.5-flash"
 EMBEDDING_MODEL = "models/embedding-001"
 
 # ============================================================================
@@ -330,9 +330,14 @@ class HybridRetriever:
         """
         Perform hybrid retrieval with optimized API calls.
         """
-        # Single AI call for both refinement and entities
-        analysis = self._refine_and_extract(query, history)
-        search_query = analysis.get("standalone_query", query)
+        # OPTIMIZATION: Skip AI refinement for very short/simple queries to save quota
+        if len(query.strip().split()) <= 3 and (not history or len(history) == 0):
+            search_query = query
+            analysis = {"standalone_query": query, "entities": []}
+        else:
+            # Single AI call for both refinement and entities
+            analysis = self._refine_and_extract(query, history)
+            search_query = analysis.get("standalone_query", query)
         
         print(f"\n🔍 Searching for: '{search_query}'")
         

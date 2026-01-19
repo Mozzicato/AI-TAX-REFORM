@@ -16,7 +16,7 @@ from app.config import get_settings
 settings = get_settings()
 if settings.google_api_key:
     genai.configure(api_key=settings.google_api_key)
-MODEL = "gemini-2.5-flash"
+MODEL = "gemini-1.5-flash"
 
 # ============================================================================
 # PROMPT TEMPLATES
