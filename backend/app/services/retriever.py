@@ -287,69 +287,54 @@ class HybridRetriever:
         self.vector_retriever = VectorRetriever()
         self.model = MODEL
 
-    def _refine_query(self, query: str, history: List[Dict] = None) -> str:
+    def _refine_and_extract(self, query: str, history: List[Dict] = None) -> Dict:
         """
-        Refine the user query based on conversation history to make it standalone
+        Refines the query and extracts entities in a single AI call to save RPM.
         """
-        if not history or len(history) == 0:
-            return query
-            
-        # Format history for the prompt
         history_str = ""
-        for msg in history[-5:]:  # Last 5 messages for context
-            role = "User" if msg.get("role") == "user" else "Assistant"
-            history_str += f"{role}: {msg.get('content')}\n"
-            
+        if history:
+            for msg in history[-3:]:
+                role = "User" if msg.get("role") == "user" else "Assistant"
+                history_str += f"{role}: {msg.get('content')}\n"
+
         prompt = f"""
-        Given the following conversation history and a follow-up question, 
-        rephrase the follow-up question to be a standalone search query that 
-        captures all necessary context. Do not answer the question, just rephrase it.
-        
-        If the question is already standalone, return it exactly as is.
-        
+        Analyze the following conversation and follow-up question.
+        1. REPHRASE the question into a standalone tax search query.
+        2. EXTRACT tax-related entities (Tax names, Agencies, Income types).
+
         Conversation History:
         {history_str}
         
         Follow-up Question: {query}
-        
-        Standalone Query:
+
+        Return ONLY a JSON object:
+        {{
+          "standalone_query": "the rephrased question",
+          "entities": [
+            {{"name": "entity_name", "type": "Tax|Agency|etc"}}
+          ]
+        }}
         """
         
         try:
             model = genai.GenerativeModel(self.model)
-            response = model.generate_content(
-                prompt,
-                generation_config=genai.types.GenerationConfig(
-                    temperature=0.1,
-                    max_output_tokens=200
-                )
-            )
-            refined_query = response.text.strip()
-            if refined_query:
-                print(f"🔄 Refined query: '{query}' -> '{refined_query}'")
-                return refined_query
+            response = model.generate_content(prompt, generation_config=genai.types.GenerationConfig(temperature=0.1))
+            result = json.loads(response.text.replace("```json", "").replace("```", "").strip())
+            print(f"🔄 Integrated Analysis: {result['standalone_query']}")
+            return result
         except Exception as e:
-            print(f"⚠️  Error refining query: {str(e)}")
-            
-        return query
-    
+            print(f"⚠️  Analysis error: {str(e)}")
+            return {"standalone_query": query, "entities": []}
+
     def retrieve(self, query: str, top_k: int = 5, history: List[Dict] = None) -> Dict:
         """
-        Perform hybrid retrieval combining graph and vector search
-        
-        Args:
-            query: User question
-            top_k: Number of results
-            history: Optional conversation history
-            
-        Returns:
-            Comprehensive context with graph and vector results
+        Perform hybrid retrieval with optimized API calls.
         """
+        # Single AI call for both refinement and entities
+        analysis = self._refine_and_extract(query, history)
+        search_query = analysis.get("standalone_query", query)
         
-        # Refine the query based on history to ensure better retrieval
-        search_query = self._refine_query(query, history)
-        
-        print(f"\n🔍 Retrieving context for search: '{search_query}'")
+        print(f"\n🔍 Searching for: '{search_query}'")
         
         context = {
             "query": query,
@@ -359,16 +344,12 @@ class HybridRetriever:
             "fused_results": []
         }
         
-        # Extract entities from refined query
-        print("  → Extracting entities from query...")
-        entities = self.graph_retriever.extract_entities_from_query(search_query)
-        
-        # Graph-based retrieval
-        if entities.get("entities"):
-            print(f"  → Found {len(entities['entities'])} entities, searching graph...")
-            for entity in entities["entities"]:
-                entity_name = entity.get("name")
-                results = self.graph_retriever.search_by_entity(entity_name)
+        # Graph-based retrieval using extracted entities
+        entities = analysis.get("entities", [])
+        if entities:
+            print(f"  → Found {len(entities)} entities")
+            for entity in entities:
+                results = self.graph_retriever.search_by_entity(entity.get("name"))
                 context["graph_results"].extend(results)
         
         # Vector-based retrieval
