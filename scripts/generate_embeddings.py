@@ -197,11 +197,11 @@ class PineconeAdapter(VectorDBAdapter):
                 if not chunk_id or not embedding:
                     continue
                 
-                # Prepare metadata (exclude embedding for storage)
+                # Prepare metadata (capture full text for better RAG)
                 metadata = {
                     "source": chunk.get("metadata", {}).get("source", "unknown"),
                     "page": chunk.get("metadata", {}).get("page", 0),
-                    "text_preview": chunk.get("text", "")[:200]
+                    "text": chunk.get("text", "") # Store full chunk text
                 }
                 
                 vectors_to_insert.append({

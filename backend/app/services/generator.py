@@ -23,39 +23,31 @@ MODEL = "gemma-3-27b-it"
 # ============================================================================
 
 SYSTEM_PROMPT = """
-You are NTRIA (Nigeria Tax Reform Intelligence Assistant), an expert tax advisor specializing 
-in the 2025 Nigerian Tax Reform Act.
-
-Your role is to help Nigerian citizens, students, NYSC participants, and entrepreneurs 
-understand their tax obligations and navigate the tax system.
+You are NTRIA (Nigeria Tax Reform Intelligence Assistant), a tax expert for the 2025 Nigerian Tax Reform.
 
 Guidelines:
-1. Base your answers on the provided tax context. If the context is missing a specific detail (like "student exemptions"), apply general tax principles found in the context (like "Personal Income Tax bands") to the user's situation.
-2. If the context is completely silent on a topic, state what you DO know from the context and then mention what is missing.
-3. Explain tax concepts (VAT, CIT, PIT) in simple, plain language.
-4. Always cite the source documents provided in the context.
-5. Provide actionable steps (e.g., "Register for PIT on the FIRS portal").
-6. Maintain a professional yet helpful conversational tone.
-7. Identify "hidden" tax triggers. For example, if someone earns a high income (like 12 million monthly), even if they are a student, they likely fall into the highest PIT band. Mention this.
-
-IMPORTANT: Never provide professional legal or financial advice. Always suggest consulting a certified tax consultant for specific filings.
-
-IMPORTANT: Never provide personal financial or legal advice. Always recommend consulting 
-with tax professionals for individual situations.
+1. DATA & NUMBERS: Use tax rates (%), income bands (₦), and deadlines from the context. If a user provides income, estimate their tax using the tables in the context.
+2. CITATIONS: You MUST mention the document name and page number for every major claim.
+3. ADVICE: If specific detail is missing, apply the general principles of the 2025 Act (e.g., higher income usually means higher tax bands).
+4. TONE: Professional and conversational.
+5. NO LEGAL ADVICE: Remind users to consult FIRS and professionals for official filings.
 """
 
 RESPONSE_TEMPLATE = """
-Context from official tax documents:
+Context from official documents:
 {context}
 
 Conversation History:
 {history}
 
-User Question:
-{query}
+User Question: {query}
 
-Please provide a clear, helpful response based on the above context and conversation history.
-Include citations from the source documents.
+Please provide a detailed, data-driven response. 
+Format:
+1. Summary Answer
+2. Technical Breakdown (using numbers/percentages from context)
+3. Actionable Next Steps
+4. Sources: [List of Citations]
 """
 
 # ============================================================================
@@ -85,42 +77,33 @@ class ResponseGenerator:
     
     def format_context(self, retrieval_context: Dict) -> str:
         """
-        Format retrieved context for LLM
-        
-        Args:
-            retrieval_context: Output from hybrid retriever
-            
-        Returns:
-            Formatted context string
+        Format retrieved context for LLM with expanded length for better data capture.
         """
-        
         context_parts = []
         
-        # Add graph results
+        # Add graph results (if any)
         if retrieval_context.get("graph_results"):
             context_parts.append("=== Graph Knowledge ===")
-            for result in retrieval_context["graph_results"][:3]:  # Top 3
-                context_parts.append(json.dumps(result, indent=2)[:500])  # Truncate
+            for result in retrieval_context["graph_results"][:5]:
+                context_parts.append(json.dumps(result, indent=2))
         
-        # Add vector results
+        # Add vector results (Expanded to 1500 chars to catch tables/lists)
         if retrieval_context.get("vector_results"):
-            context_parts.append("\n=== Relevant Documents ===")
-            for result in retrieval_context["vector_results"][:5]:  # Top 5
+            context_parts.append("\n=== Detailed Tax Documents ===")
+            for i, result in enumerate(retrieval_context["vector_results"][:6]):
                 text = result.get("text", "")
-                if text:
-                    context_parts.append(f"• {text[:300]}...")
-                
                 metadata = result.get("metadata", {})
-                source = metadata.get("source")
-                page = metadata.get("page")
-                if source or page:
-                    source_str = f"(Source: {source}"
-                    if page:
-                        source_str += f", Page {page}"
-                    source_str += ")"
-                    context_parts.append(source_str)
+                source = metadata.get("source", "Unknown Document")
+                page = metadata.get("page", "Unknown Page")
+                
+                if text:
+                    # Capture much more text so tables/tax bands aren't cut off
+                    context_parts.append(f"[Document {i+1}: {source} (Page {page})]\n{text[:1500]}")
         
-        return "\n".join(context_parts)
+        if not context_parts:
+            return "No specific tax documents found for this query."
+            
+        return "\n\n".join(context_parts)
     
     def generate_response(self, query: str, retrieval_context: Dict, history: List[Dict] = None) -> Dict:
         """
