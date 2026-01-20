@@ -179,7 +179,12 @@ class ResponseGenerator:
                 )
             )
             
-            response_text = response.text
+            # Handle cases where Gemini blocks the response
+            try:
+                response_text = response.text
+            except ValueError:
+                # If the response was blocked, use the fallback parts
+                response_text = "I'm sorry, I cannot provide a detailed tax analysis for that specific input due to safety or formatting constraints. Could you please rephrase your request?"
             
             # Extract sources (only for non-greetings)
             sources = []
@@ -187,15 +192,25 @@ class ResponseGenerator:
                 sources = self._extract_sources(retrieval_context)
             
             # Calculate confidence
-            confidence = 1.0 if self.is_greeting(query) else self._calculate_confidence(retrieval_context)
+            try:
+                confidence = 1.0 if self.is_greeting(query) else self._calculate_confidence(retrieval_context)
+            except:
+                confidence = 0.5
+            
+            # Map usage metadata correctly for Gemini
+            prompt_tokens = 0
+            completion_tokens = 0
+            if hasattr(response, 'usage_metadata'):
+                prompt_tokens = response.usage_metadata.prompt_token_count
+                completion_tokens = response.usage_metadata.candidates_token_count
             
             return {
                 "response": response_text,
                 "sources": sources,
                 "confidence": confidence,
                 "model": self.model,
-                "input_tokens": response.usage.prompt_tokens if hasattr(response, 'usage') else 0,
-                "output_tokens": response.usage.completion_tokens if hasattr(response, 'usage') else 0
+                "input_tokens": prompt_tokens,
+                "output_tokens": completion_tokens
             }
             
         except Exception as e:
@@ -251,8 +266,10 @@ class ResponseGenerator:
         # Boost based on vector scores
         vector_results = retrieval_context.get("vector_results", [])
         if vector_results:
-            avg_score = sum(r.get("score", 0) for r in vector_results) / len(vector_results)
-            confidence += min(avg_score, 0.3)  # Cap at +0.3
+            scores = [r.get("score") for r in vector_results if r.get("score") is not None]
+            if scores:
+                avg_score = sum(scores) / len(scores)
+                confidence += min(avg_score, 0.3)  # Cap at +0.3
         
         return min(confidence, 1.0)  # Ensure max 1.0
     
@@ -287,74 +304,6 @@ class ResponseGenerator:
             return False, "No context but confident answer"
         
         return True, "Valid response"
-
-# ============================================================================
-# GRAPH RAG ORCHESTRATOR
-# ============================================================================
-
-class GraphRAGPipeline:
-    """Orchestrates the complete Graph RAG pipeline"""
-    
-    def __init__(self):
-        from backend.app.services.retriever import HybridRetriever
-        self.retriever = HybridRetriever()
-        self.generator = ResponseGenerator()
-    
-    def answer_query(self, query: str) -> Dict:
-        """
-        Complete pipeline: retrieve context → generate response → validate
-        
-        Args:
-            query: User question
-            
-        Returns:
-            Complete answer with context and metadata
-        """
-        
-        print(f"\n🔄 Graph RAG Pipeline Processing...")
-        print(f"   Query: {query}\n")
-        
-        # Step 1: Retrieve context
-        print("1️⃣  Retrieving context...")
-        retrieval_context = self.retriever.retrieve(query, top_k=5)
-        
-        # Step 2: Generate response
-        print("2️⃣  Generating response...")
-        response_data = self.generator.generate_response(query, retrieval_context)
-        
-        # Step 3: Validate response
-        print("3️⃣  Validating response...")
-        is_valid, validation_msg = self.generator.validate_response(
-            response_data["response"],
-            str(retrieval_context)
-        )
-        
-        if not is_valid:
-            print(f"   ⚠️  Validation warning: {validation_msg}")
-        
-        # Combine everything
-        result = {
-            "query": query,
-            "answer": response_data["response"],
-            "sources": response_data.get("sources", []),
-            "confidence": response_data.get("confidence", 0.0),
-            "valid": is_valid,
-            "retrieval_stats": {
-                "graph_results": len(retrieval_context.get("graph_results", [])),
-                "vector_results": len(retrieval_context.get("vector_results", [])),
-                "fused_results": len(retrieval_context.get("fused_results", []))
-            }
-        }
-        
-        print(f"\n✅ Pipeline completed")
-        print(f"   Confidence: {result['confidence']:.2%}")
-        print(f"   Sources: {len(result['sources'])}")
-        
-        return result
-    
-    def close(self):
-        """Close all connections"""
-        self.retriever.close()
 
 # ============================================================================
 # EXAMPLE USAGE
