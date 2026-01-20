@@ -192,18 +192,8 @@ class VectorRetriever:
                 return None
         
         elif self.db_type == "chroma":
-            # ... existing chroma init ...
-            try:
-                import chromadb
-                client = chromadb.Client()
-                collection = client.get_or_create_collection(
-                    name="ntria-tax-documents"
-                )
-                print("✅ Connected to Chroma for retrieval")
-                return collection
-            except Exception as e:
-                print(f"⚠️  Chroma error: {str(e)}")
-                return None
+            print("⚠️  Chroma support has been removed from this codebase. Use 'json' or 'pinecone' as VECTOR_DB_TYPE.")
+            return None
         
         elif self.db_type == "json":
             try:

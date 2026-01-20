@@ -258,55 +258,8 @@ class PineconeAdapter(VectorDBAdapter):
             print(f"❌ Error searching Pinecone: {str(e)}")
             return []
 
-class ChromaAdapter(VectorDBAdapter):
-    """Chroma vector database adapter (local)"""
-    
-    def __init__(self):
-        try:
-            import chromadb
-            self.client = chromadb.Client()
-            self.collection = self.client.get_or_create_collection(
-                name="ntria-tax-documents",
-                metadata={"hnsw:space": "cosine"}
-            )
-            print("✅ Connected to Chroma")
-        except Exception as e:
-            print(f"❌ Error initializing Chroma: {str(e)}")
-            self.collection = None
-    
-    def add_chunks(self, chunks: List[Dict]) -> bool:
-        """Add chunks to Chroma"""
-        if not self.collection:
-            return False
-        
-        try:
-            ids = []
-            embeddings = []
-            documents = []
-            metadatas = []
-            
-            for chunk in chunks:
-                ids.append(chunk.get("chunk_id"))
-                embeddings.append(chunk.get("embedding"))
-                documents.append(chunk.get("text"))
-                metadatas.append({
-                    "source": chunk.get("metadata", {}).get("source", "unknown"),
-                    "page": str(chunk.get("metadata", {}).get("page", 0))
-                })
-            
-            self.collection.add(
-                ids=ids,
-                embeddings=embeddings,
-                documents=documents,
-                metadatas=metadatas
-            )
-            
-            print(f"✅ Added {len(ids)} chunks to Chroma")
-            return True
-            
-        except Exception as e:
-            print(f"❌ Error adding chunks to Chroma: {str(e)}")
-            return False
+# Chroma adapter removed to avoid chromadb dependency.
+# If Chroma support is desired later, re-add `chromadb` to requirements and restore the adapter implementation.
 
 # ============================================================================
 # PIPELINE
@@ -319,8 +272,8 @@ def get_vector_db_adapter() -> VectorDBAdapter:
     
     if db_type == "json":
         return JSONGraphAdapter()
-    elif db_type == "chroma":
-        return ChromaAdapter()
+    elif db_type == "pinecone":
+        return PineconeAdapter()
     else:
         print(f"⚠️  Using JSON adapter as fallback for: {db_type}")
         return JSONGraphAdapter()
