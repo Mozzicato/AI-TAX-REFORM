@@ -5,7 +5,7 @@ Generates embeddings for document chunks and stores in vector database
 
 import json
 import os
-from typing import List, Dict
+from typing import List, Dict, Any
 from dotenv import load_dotenv
 import openai
 import google.generativeai as genai

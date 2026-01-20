@@ -13,6 +13,7 @@ load_dotenv()
 
 # Initialize Gemini
 from app.config import get_settings
+from app.services.rag_pipeline import GraphRAGPipeline
 settings = get_settings()
 if settings.google_api_key:
     genai.configure(api_key=settings.google_api_key)
