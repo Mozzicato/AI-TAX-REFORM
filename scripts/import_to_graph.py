@@ -17,7 +17,9 @@ load_dotenv()
 
 def load_entities():
     """Load extracted entities."""
-    entities_path = Path("/workspaces/AI-TAX-REFORM/data/extracted/entities.json")
+    # Use relative path
+    base_dir = Path(__file__).parent.parent
+    entities_path = base_dir / "data" / "extracted" / "entities.json"
     
     if not entities_path.exists():
         print(f"❌ Entities file not found: {entities_path}")
@@ -29,7 +31,9 @@ def load_entities():
 
 def load_relationships():
     """Load extracted relationships."""
-    rels_path = Path("/workspaces/AI-TAX-REFORM/data/extracted/relationships.json")
+    # Use relative path
+    base_dir = Path(__file__).parent.parent
+    rels_path = base_dir / "data" / "extracted" / "relationships.json"
     
     if not rels_path.exists():
         print(f"❌ Relationships file not found: {rels_path}")

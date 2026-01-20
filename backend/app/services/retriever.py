@@ -170,7 +170,7 @@ class VectorRetriever:
     """Retrieves documents from vector database"""
     
     def __init__(self):
-        self.db_type = os.getenv("VECTOR_DB_TYPE", "pinecone").lower()
+        self.db_type = os.getenv("VECTOR_DB_TYPE", "json").lower()
         self.adapter = self._init_adapter()
     
     def _init_adapter(self):
@@ -178,6 +178,7 @@ class VectorRetriever:
         if self.db_type == "pinecone":
             try:
                 import pinecone
+                # ... existing pinecone init ...
                 api_key = os.getenv("PINECONE_API_KEY")
                 environment = os.getenv("PINECONE_ENVIRONMENT")
                 index_name = os.getenv("PINECONE_INDEX_NAME", "ntria-tax-documents")
@@ -191,6 +192,7 @@ class VectorRetriever:
                 return None
         
         elif self.db_type == "chroma":
+            # ... existing chroma init ...
             try:
                 import chromadb
                 client = chromadb.Client()
@@ -203,37 +205,30 @@ class VectorRetriever:
                 print(f"⚠️  Chroma error: {str(e)}")
                 return None
         
+        elif self.db_type == "json":
+            try:
+                # Add local JSON adapter support
+                from scripts.generate_embeddings import JSONGraphAdapter
+                adapter = JSONGraphAdapter()
+                return adapter
+            except Exception as e:
+                print(f"⚠️  JSON Adapter error: {str(e)}")
+                return None
+        
         return None
-    
-    def generate_embedding(self, text: str) -> List[float]:
-        """Generate embedding using Gemini (Primary)"""
-        try:
-            result = genai.embed_content(
-                model=EMBEDDING_MODEL,
-                content=text,
-                task_type="retrieval_query"
-            )
-            return result['embedding']
-        except Exception as e:
-            print(f"⚠️  Gemini Embedding error: {str(e)}")
-            return None
-    
+
     def search(self, query: str, top_k: int = 5) -> List[Dict]:
         """
         Search vector database for similar documents
-        
-        Args:
-            query: Search query
-            top_k: Number of results to return
-            
-        Returns:
-            List of relevant documents
         """
-        
         if not self.adapter:
             return []
         
-        # Generate query embedding
+        if self.db_type == "json":
+            # Local JSON adapter uses raw text for keyword search
+            return self.adapter.search(query, top_k=top_k)
+        
+        # Other adapters use embeddings
         query_embedding = self.generate_embedding(query)
         if not query_embedding:
             return []

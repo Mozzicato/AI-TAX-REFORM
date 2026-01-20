@@ -13,10 +13,9 @@ class JSONGraphDB:
     """Simple JSON-based graph database - no Neo4j needed!"""
     
     def __init__(self, file_path: str = None):
-        self.file_path = file_path or os.getenv(
-            'GRAPH_DB_PATH', 
-            '/workspaces/AI-TAX-REFORM/data/knowledge_graph.json'
-        )
+        # Use relative path that works on all operating systems
+        default_path = os.path.join(os.path.dirname(__file__), "../../../data/knowledge_graph.json")
+        self.file_path = file_path or os.getenv('GRAPH_DB_PATH', default_path)
         self.graph = self._load_graph()
     
     def _load_graph(self) -> Dict:

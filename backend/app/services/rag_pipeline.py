@@ -34,11 +34,16 @@ class GraphRAGPipeline:
             
             # 2. Check for knowledge gap - Fallback to Web Search ONLY if local RAG has nothing
             # and it's not a basic greeting.
-            if not is_basic_query and not retrieval_context.get("vector_results") and not retrieval_context.get("graph_results"):
+            is_empty_local = not retrieval_context.get("vector_results") and not retrieval_context.get("graph_results")
+            
+            if not is_basic_query and is_empty_local:
                 print(f"🔍 No local context for '{query}'. Attempting external search to be sharp...")
                 external_info = self.searcher.search(query)
                 if external_info:
                     retrieval_context["external_knowledge"] = external_info
+                else:
+                    # If even search fails, provide a helpful initialization hint
+                    retrieval_context["external_knowledge"] = "⚠️  Notice: The NTRIA local knowledge base appears to be empty. Please run 'python scripts/populate_baseline_data.py' to initialize the brain with official 2025 tax data."
 
             # 3. Handle Precise Calculation if needed
             if self._should_calculate(query):

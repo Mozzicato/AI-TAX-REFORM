@@ -103,9 +103,11 @@ class JSONGraphAdapter(VectorDBAdapter):
     """JSON-based graph storage - no external vector DB needed"""
     
     def __init__(self):
-        self.graph_file = "/workspaces/AI-TAX-REFORM/data/knowledge_graph.json"
+        # Use relative path for cross-platform support
+        base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        self.graph_file = os.path.join(base_dir, "data", "knowledge_graph.json")
         os.makedirs(os.path.dirname(self.graph_file), exist_ok=True)
-        print("✅ Using local JSON graph storage")
+        print(f"✅ Using local JSON graph storage: {self.graph_file}")
 
     def add_chunks(self, chunks: List[Dict]) -> bool:
         """Add chunks to JSON graph file"""
@@ -132,7 +134,7 @@ class JSONGraphAdapter(VectorDBAdapter):
             print(f"❌ Error saving chunks to JSON graph: {str(e)}")
             return False
 
-    def search(self, query_embedding: List[float], top_k: int = 5) -> List[Dict]:
+    def search(self, query: Any, top_k: int = 5) -> List[Dict]:
         """Basic text search in JSON graph (no embedding search)"""
         if not os.path.exists(self.graph_file):
             return []
@@ -142,14 +144,23 @@ class JSONGraphAdapter(VectorDBAdapter):
                 graph = json.load(f)
             
             chunks = graph.get("chunks", [])
-            # Simple keyword matching instead of vector similarity
-            query_words = set(str(query_embedding).lower().split())
+            
+            # If query is an embedding (list of floats), we can't search easily without math
+            # If it's a string, we do keyword search.
+            search_text = query if isinstance(query, str) else ""
+            
+            if not search_text:
+                return []
+
+            query_words = set(search_text.lower().split())
             
             scored_chunks = []
             for chunk in chunks:
                 text = chunk.get("text", "").lower()
                 # Simple scoring based on keyword overlap
-                score = len(set(text.split()) & query_words) / max(len(query_words), 1)
+                match_count = len(set(text.split()) & query_words)
+                score = match_count / max(len(query_words), 1)
+                
                 if score > 0:
                     scored_chunks.append({
                         "score": score,

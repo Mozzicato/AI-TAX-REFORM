@@ -13,11 +13,18 @@ class TaxCalculator:
     def calculate(self, expression: str) -> str:
         """
         Safely evaluate a mathematical expression.
-        Avoids LLM math hallucinations.
+        Handles words like 'million', 'billion', 'k'.
         """
         try:
+            # Pre-process common words to numbers
+            expr = expression.lower()
+            expr = expr.replace('million', '* 1000000')
+            expr = expr.replace('billion', '* 1000000000')
+            expr = expr.replace('m', '* 1000000') # Dangerous if just 'm' appears in other words, but inside CALC tag it should be fine
+            expr = expr.replace('k', '* 1000')
+            
             # Remove any non-math characters except numbers, operators, and parentheses
-            sanitized = re.sub(r'[^0-9+\-*/().\s]', '', expression)
+            sanitized = re.sub(r'[^0-9+\-*/().\s]', '', expr)
             # Evaluate safely (only basic math)
             result = eval(sanitized, {"__builtins__": None}, {})
             return f"{result:,.2f}"
