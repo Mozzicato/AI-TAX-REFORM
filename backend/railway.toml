@@ -1,6 +1,0 @@
-## DEPRECATED: Railway configuration
-## This file was used by Railway to configure build and deploy settings.
-## The project now targets Render; use `render.yaml` and
-## `RENDER_DEPLOYMENT_INSTRUCTIONS.txt` for deployment details.
-
-# (Railway config removed) - no action required. Kept for historical reference.
