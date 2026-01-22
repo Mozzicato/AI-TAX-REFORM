@@ -1,0 +1,9 @@
+flask
+python-dotenv
+faiss-cpu
+PyPDF2
+tqdm
+openai
+requests
+huggingface-hub
+sentence-transformers
