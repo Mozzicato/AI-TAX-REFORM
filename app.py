@@ -453,13 +453,9 @@ if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
     debug = os.getenv("FLASK_ENV") == "development"
     
-    # Preload vectorstore on startup
-    try:
-        get_vectorstore()
-        logger.info("Vectorstore preloaded successfully")
-    except Exception as e:
-        logger.warning(f"Could not preload vectorstore: {e}")
-    
+    # Don't preload vectorstore - let it load on first request
+    # This ensures the port opens quickly for Render health checks
     logger.info(f"Starting AI Tax Reform API v2.0.0 on port {port}")
     logger.info(f"Allowed origins: {origins}")
+    logger.info("Vectorstore will be loaded on first request")
     app.run(host="0.0.0.0", port=port, debug=debug)

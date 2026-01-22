@@ -322,6 +322,25 @@ curl -X POST https://ai-tax-reform-api.onrender.com/api/calculate \
 # Check Render build logs for specific error
 ```
 
+#### Port Timeout on Render
+
+**Problem**: `Port scan timeout reached, failed to detect open port 7860`
+
+**Solutions**:
+1. Ensure `gunicorn.conf.py` binds to `0.0.0.0` (not `127.0.0.1`)
+2. Remove heavy startup operations that delay port opening
+3. Vectorstore should load lazily on first request, not at startup
+4. Verify `gunicorn app:app --config gunicorn.conf.py` in start command
+5. Check Render logs for actual binding address
+
+**Correct gunicorn.conf.py**:
+```python
+import os
+bind = f"0.0.0.0:{os.getenv('PORT', '7860')}"
+workers = 2
+timeout = 120
+```
+
 #### CORS Errors
 
 **Problem**: Frontend can't connect to backend
