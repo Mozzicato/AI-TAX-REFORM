@@ -267,8 +267,8 @@ def retrieve():
         payload = request.get_json() or {}
         
         query_text = sanitize_string(payload.get("query", ""))
-        if not query_text or len(query_text) < 3:
-            raise APIError("Query must be at least 3 characters", 400)
+        if not query_text or len(query_text) < 2:
+            raise APIError("Query must be at least 2 characters", 400)
         
         top_k = validate_positive_int(payload.get("top_k", 5), "top_k", min_val=1, max_val=20)
         
@@ -306,8 +306,8 @@ def qa():
         payload = request.get_json() or {}
         
         query_text = sanitize_string(payload.get("query", ""))
-        if not query_text or len(query_text) < 3:
-            raise APIError("Query must be at least 3 characters", 400)
+        if not query_text or len(query_text) < 2:
+            raise APIError("Query must be at least 2 characters", 400)
         
         top_k = validate_positive_int(payload.get("top_k", 5), "top_k", min_val=1, max_val=10)
         prefer_grok = bool(payload.get("prefer_grok", True))
@@ -360,8 +360,8 @@ def aqa():
         payload = request.get_json() or {}
         
         query_text = sanitize_string(payload.get("query", ""))
-        if not query_text or len(query_text) < 3:
-            raise APIError("Query must be at least 3 characters", 400)
+        if not query_text or len(query_text) < 2:
+            raise APIError("Query must be at least 2 characters", 400)
         
         top_k = validate_positive_int(payload.get("top_k", 5), "top_k", min_val=1, max_val=10)
         prefer_grok = bool(payload.get("prefer_grok", True))
