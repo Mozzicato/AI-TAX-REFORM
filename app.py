@@ -71,7 +71,7 @@ _vectorstore_lock = threading.Lock()
 
 
 def preload_vectorstore():
-    \"\"\"Preload vectorstore and embedding model in background thread.\"\"\"
+    """Preload vectorstore and embedding model in background thread."""
     global _vectorstore_cache, _vectorstore_loading
     with _vectorstore_lock:
         if _vectorstore_cache is None and not _vectorstore_loading:
