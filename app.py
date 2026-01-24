@@ -59,12 +59,33 @@ limiter = Limiter(
 from src.tax_calculator import calculate_tax, get_tax_summary, TaxCalculationError
 from scripts.query_qa import load_vectorstore, query
 from scripts.qa_service import generate_answer, verify_answer
+import threading
 
 # ============================================================================
 # Vectorstore Cache
 # ============================================================================
 
 _vectorstore_cache: Optional[Tuple[Any, Any]] = None
+_vectorstore_loading = False
+_vectorstore_lock = threading.Lock()
+
+
+def preload_vectorstore():
+    """Preload vectorstore in background thread."""
+    global _vectorstore_cache, _vectorstore_loading
+    with _vectorstore_lock:
+        if _vectorstore_cache is None and not _vectorstore_loading:
+            _vectorstore_loading = True
+    
+    if _vectorstore_loading and _vectorstore_cache is None:
+        try:
+            logger.info("Background loading vectorstore...")
+            _vectorstore_cache = load_vectorstore()
+            logger.info("Vectorstore preloaded successfully")
+        except Exception as e:
+            logger.error(f"Background vectorstore load failed: {e}")
+        finally:
+            _vectorstore_loading = False
 
 
 def get_vectorstore() -> Tuple[Any, Any]:
@@ -316,8 +337,9 @@ def qa():
     
     Request JSON:
         - query (string, required): Question to answer
-        - top_k (int, optional): Number of context documents (1-10, default: 3)
+        - top_k (int, optional): Number of context documents (1-8, default: 3)
         - prefer_grok (bool, optional): Prefer Groq/Grok model (default: true)
+        - fast_mode (bool, optional): Return sources without LLM generation (default: false)
     
     Returns:
         JSON with AI-generated answer and source documents
@@ -332,6 +354,7 @@ def qa():
         # Default to 3 docs instead of 5 for faster response
         top_k = validate_positive_int(payload.get("top_k", 3), "top_k", min_val=1, max_val=8)
         prefer_grok = bool(payload.get("prefer_grok", True))
+        fast_mode = bool(payload.get("fast_mode", False))
         
         # Retrieve relevant context with timeout handling
         try:
@@ -348,9 +371,19 @@ def qa():
                 "sources": []
             }), 200
         
+        # Fast mode: return sources with excerpt instead of calling slow LLM
+        if fast_mode:
+            top_text = results[0].get("text", "")[:800]
+            return jsonify({
+                "query": query_text,
+                "answer": f"**From the Nigeria Tax Act 2025:**\n\n{top_text}\n\n---\n*[Fast mode - showing direct excerpt from source documents]*",
+                "model": "fast",
+                "sources": results
+            }), 200
+        
         # Generate answer with shorter timeout
         try:
-            answer, model_used, _ = generate_answer(query_text, results, prefer_grok=prefer_grok, timeout=25)
+            answer, model_used, _ = generate_answer(query_text, results, prefer_grok=prefer_grok, timeout=20)
         except Exception as ge:
             logger.error(f"Answer generation failed: {ge}")
             # Return sources even if generation fails
@@ -483,13 +516,26 @@ def api_docs():
 # Application Startup
 # ============================================================================
 
+def start_background_tasks():
+    """Start background tasks after app is ready."""
+    # Preload vectorstore in background after 2 seconds
+    def delayed_preload():
+        import time
+        time.sleep(2)
+        preload_vectorstore()
+    
+    thread = threading.Thread(target=delayed_preload, daemon=True)
+    thread.start()
+
+
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 7860))
     debug = os.getenv("FLASK_ENV") == "development"
     
-    # Don't preload vectorstore - let it load on first request
-    # This ensures the port opens quickly for Render health checks
     logger.info(f"Starting AI Tax Reform API v2.0.0 on port {port}")
     logger.info(f"Allowed origins: {origins}")
-    logger.info("Vectorstore will be loaded on first request")
+    
+    # Start background preloading
+    start_background_tasks()
+    
     app.run(host="0.0.0.0", port=port, debug=debug)

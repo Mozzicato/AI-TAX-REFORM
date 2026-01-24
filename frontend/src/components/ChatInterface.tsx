@@ -106,25 +106,46 @@ export default function ChatInterface() {
     }
     setMessages(prev => [...prev, loadingMessage])
 
-    try {
+    // Helper function to make the API call
+    const makeRequest = async (fastMode: boolean = false) => {
       const endpoint = useVerification ? '/api/aqa' : '/api/qa'
-      
-      // Create abort controller for timeout
       const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 second timeout
+      const timeoutMs = fastMode ? 15000 : 30000
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
       
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: trimmedInput,
-          top_k: 3, // Reduced from 5 for faster response
+          top_k: fastMode ? 2 : 3,
           prefer_grok: true,
+          fast_mode: fastMode,
         }),
         signal: controller.signal,
       })
 
       clearTimeout(timeoutId)
+      return response
+    }
+
+    try {
+      let response: Response
+      let usedFastMode = false
+      
+      // Try normal mode first, fall back to fast mode on timeout
+      try {
+        response = await makeRequest(false)
+      } catch (firstError) {
+        if (firstError instanceof Error && firstError.name === 'AbortError') {
+          console.log('Normal mode timed out, trying fast mode...')
+          usedFastMode = true
+          response = await makeRequest(true)
+        } else {
+          throw firstError
+        }
+      }
+
       const data = await response.json()
 
       if (!response.ok) {
@@ -136,7 +157,7 @@ export default function ChatInterface() {
         role: 'assistant',
         content: data.answer || "I couldn't generate a response. Please try again.",
         sources: data.sources,
-        model: data.model,
+        model: usedFastMode ? 'fast' : data.model,
         verified: data.verified,
         timestamp: new Date(),
       }
@@ -151,7 +172,7 @@ export default function ChatInterface() {
       
       if (error instanceof Error) {
         if (error.name === 'AbortError') {
-          errorContent = '⏱️ **Request timed out**\n\nThe AI is taking longer than usual to respond. This might be due to high server load. Please try:\n\n- Asking a simpler question\n- Using the Tax Calculator for calculations\n- Trying again in a moment'
+          errorContent = '⏱️ **Request timed out**\n\nThe server is currently overloaded. Please try again in a moment.'
         } else {
           errorContent = `❌ ${error.message}`
         }
