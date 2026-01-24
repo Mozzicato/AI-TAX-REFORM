@@ -39,14 +39,26 @@ def embed_text_hf(texts, model_id="nvidia/llama-embed-nemotron-8b", api_token=No
 
 
 def embed_text_local(texts, model_name="sentence-transformers/all-mpnet-base-v2"):
-    """Embed texts locally using sentence-transformers."""
+    """Embed texts locally using sentence-transformers with model caching."""
+    global _sentence_model_cache
     try:
         from sentence_transformers import SentenceTransformer
     except Exception as e:
         raise Exception("Local sentence-transformers not installed. Install it with `pip install sentence-transformers`.")
-    model = SentenceTransformer(model_name)
+    
+    # Cache the model to avoid reloading
+    if '_sentence_model_cache' not in globals() or _sentence_model_cache is None:
+        _sentence_model_cache = {}
+    
+    if model_name not in _sentence_model_cache:
+        _sentence_model_cache[model_name] = SentenceTransformer(model_name)
+    
+    model = _sentence_model_cache[model_name]
     embs = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
     return np.array(embs, dtype=np.float32)
+
+# Model cache
+_sentence_model_cache = None
 
 
 def load_vectorstore(persist_dir="vectorstore"):
