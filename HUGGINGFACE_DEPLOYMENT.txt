@@ -1,0 +1,45 @@
+Deploy to HuggingFace Spaces - Step by Step
+
+Step 1: Create a Space (DONE - you created mozzic/tax)
+- Go to: https://huggingface.co/new-space
+- Space name: tax (or any name)
+- SDK: Docker
+- Hardware: CPU basic (FREE)
+
+Step 2: Clone Your HuggingFace Space
+Run these commands in PowerShell:
+
+  cd c:\Users\SALAUDEEN MUBARAK\cloned
+  git clone https://huggingface.co/spaces/mozzic/tax hf-tax-space
+  
+  (When prompted for password, use your HF access token from: https://huggingface.co/settings/tokens)
+
+Step 3: Copy Your Project Files to HF Space
+  
+  Copy-Item -Path "AI-TAX-REFORM\*" -Destination "hf-tax-space\" -Recurse -Force
+  
+Step 4: Push to HuggingFace
+
+  cd hf-tax-space
+  git add .
+  git commit -m "Initial deployment"
+  git push
+
+Step 5: Add Secrets in HuggingFace UI
+- Go to: https://huggingface.co/spaces/mozzic/tax/settings
+- Scroll to "Variables and secrets"
+- Click "New secret" and add:
+  - GEMINI_API_KEY
+  - GROQ_API_KEY
+  - HF_TOKEN
+
+Step 6: Wait for Build
+- HuggingFace will auto-build your Docker container
+- Your API will be at: https://mozzic-tax.hf.space
+
+Then Update Vercel Frontend
+- Set environment variable in Vercel:
+  NEXT_PUBLIC_API_URL=https://mozzic-tax.hf.space
+
+- Add CORS_ORIGINS secret in HuggingFace:
+  CORS_ORIGINS=https://your-vercel-app.vercel.app,http://localhost:3000

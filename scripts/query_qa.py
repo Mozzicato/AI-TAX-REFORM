@@ -59,13 +59,32 @@ def load_vectorstore(persist_dir="vectorstore"):
 
 def query(index, docs, q, model_id="sentence-transformers/all-mpnet-base-v2", top_k=5, api_token=None):
     """Query the vectorstore using local sentence-transformers model."""
+    import logging
+    logger = logging.getLogger(__name__)
+    
     # Use local model - HF API doesn't support direct embeddings for sentence-transformers
     from sentence_transformers import SentenceTransformer
     
     # Cache model in module-level variable
     global _st_model
     if '_st_model' not in globals() or _st_model is None:
-        _st_model = SentenceTransformer(model_id)
+        logger.info(f"Loading SentenceTransformer model: {model_id}")
+        try:
+            # Set HF token for model download if available
+            hf_token = api_token or os.getenv("HF_TOKEN")
+            if hf_token:
+                os.environ["HF_TOKEN"] = hf_token
+            
+            # Use cache folder if set (Docker builds pre-download here)
+            cache_folder = os.getenv("SENTENCE_TRANSFORMERS_HOME")
+            if cache_folder:
+                _st_model = SentenceTransformer(model_id, cache_folder=cache_folder)
+            else:
+                _st_model = SentenceTransformer(model_id)
+            logger.info("Model loaded successfully")
+        except Exception as e:
+            logger.error(f"Failed to load model: {e}")
+            raise
     
     emb = _st_model.encode([q], show_progress_bar=False, convert_to_numpy=True)
     emb = np.array(emb, dtype=np.float32)
