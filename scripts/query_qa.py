@@ -16,15 +16,15 @@ import numpy as np
 import requests
 
 
-def embed_text_hf(texts, model_id="nvidia/llama-embed-nemotron-8b", api_token=None):
-    """Call HF Inference API to embed texts."""
+def embed_text_hf(texts, model_id="nvidia/llama-embed-nemotron-8b", api_token=None, timeout=10):
+    """Call HF Inference API to embed texts with timeout."""
     if api_token is None:
         raise Exception("HF_TOKEN not found. Please set HF_TOKEN in your .env or environment variables.")
     api_url = f"https://router.huggingface.co/models/{model_id}"
     headers = {"Authorization": f"Bearer {api_token}"}
     
     payload = {"inputs": texts}
-    response = requests.post(api_url, json=payload, headers=headers, timeout=60)
+    response = requests.post(api_url, json=payload, headers=headers, timeout=timeout)
     
     if response.status_code != 200:
         if response.status_code == 401:

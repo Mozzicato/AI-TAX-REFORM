@@ -61,9 +61,9 @@ class APIError(Exception):
 def call_groq(
     prompt: str,
     system_prompt: Optional[str] = None,
-    timeout: int = 30,
+    timeout: int = 25,
     model: str = "llama-3.3-70b-versatile",
-    max_tokens: int = 1024,
+    max_tokens: int = 800,
     temperature: float = 0.3
 ) -> str:
     """
@@ -72,9 +72,9 @@ def call_groq(
     Args:
         prompt: User message/prompt
         system_prompt: Optional system message for context
-        timeout: Request timeout in seconds
+        timeout: Request timeout in seconds (default: 25)
         model: Model identifier
-        max_tokens: Maximum tokens in response
+        max_tokens: Maximum tokens in response (default: 800)
         temperature: Sampling temperature (0-1)
     
     Returns:
@@ -137,8 +137,8 @@ call_grok = call_groq
 def call_gemini(
     prompt: str,
     model: str = "gemini-pro",
-    timeout: int = 30,
-    max_output_tokens: int = 1024
+    timeout: int = 25,
+    max_output_tokens: int = 800
 ) -> str:
     """
     Call Google Gemini API for text generation.
@@ -146,8 +146,8 @@ def call_gemini(
     Args:
         prompt: User prompt
         model: Gemini model identifier
-        timeout: Request timeout in seconds
-        max_output_tokens: Maximum tokens in response
+        timeout: Request timeout in seconds (default: 25)
+        max_output_tokens: Maximum tokens in response (default: 800)
     
     Returns:
         Generated text response
@@ -213,7 +213,8 @@ def format_context(contexts: List[Dict[str, Any]]) -> str:
 def generate_answer(
     query: str,
     contexts: List[Dict[str, Any]],
-    prefer_grok: bool = True
+    prefer_grok: bool = True,
+    timeout: int = 25
 ) -> Tuple[str, str, str]:
     """
     Generate an answer using RAG with the provided contexts.
@@ -222,6 +223,7 @@ def generate_answer(
         query: User's question
         contexts: List of context documents with 'text', 'page', etc.
         prefer_grok: Try Groq/Grok first if True
+        timeout: Timeout for API calls in seconds
     
     Returns:
         Tuple of (answer_text, model_used, raw_response)
@@ -255,7 +257,7 @@ List the source numbers you used at the end of your response."""
     # Try Groq first if preferred
     if prefer_grok:
         try:
-            response = call_groq(prompt, system_prompt=TAX_ASSISTANT_PROMPT)
+            response = call_groq(prompt, system_prompt=TAX_ASSISTANT_PROMPT, timeout=timeout)
             return response, "groq", response
         except APIError as e:
             errors.append(f"Groq: {str(e)}")
@@ -264,7 +266,7 @@ List the source numbers you used at the end of your response."""
     # Try Gemini as fallback
     try:
         full_prompt = f"{TAX_ASSISTANT_PROMPT}\n\n{prompt}"
-        response = call_gemini(full_prompt)
+        response = call_gemini(full_prompt, timeout=timeout - 5)
         return response, "gemini", response
     except APIError as e:
         errors.append(f"Gemini: {str(e)}")
@@ -273,7 +275,7 @@ List the source numbers you used at the end of your response."""
     # If not preferring Grok, try it now
     if not prefer_grok:
         try:
-            response = call_groq(prompt, system_prompt=TAX_ASSISTANT_PROMPT)
+            response = call_groq(prompt, system_prompt=TAX_ASSISTANT_PROMPT, timeout=timeout)
             return response, "groq", response
         except APIError as e:
             errors.append(f"Groq: {str(e)}")

@@ -108,16 +108,23 @@ export default function ChatInterface() {
 
     try {
       const endpoint = useVerification ? '/api/aqa' : '/api/qa'
+      
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 45000) // 45 second timeout
+      
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           query: trimmedInput,
-          top_k: 5,
+          top_k: 3, // Reduced from 5 for faster response
           prefer_grok: true,
         }),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
       const data = await response.json()
 
       if (!response.ok) {
@@ -139,12 +146,21 @@ export default function ChatInterface() {
       )
     } catch (error) {
       console.error('Error:', error)
+      
+      let errorContent = '❌ Sorry, I encountered an error. Please try again.'
+      
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          errorContent = '⏱️ **Request timed out**\n\nThe AI is taking longer than usual to respond. This might be due to high server load. Please try:\n\n- Asking a simpler question\n- Using the Tax Calculator for calculations\n- Trying again in a moment'
+        } else {
+          errorContent = `❌ ${error.message}`
+        }
+      }
+      
       const errorMessage: Message = {
         id: loadingMessage.id,
         role: 'assistant',
-        content: error instanceof Error 
-          ? `❌ ${error.message}` 
-          : '❌ Sorry, I encountered an error. Please try again.',
+        content: errorContent,
         error: true,
         timestamp: new Date(),
       }

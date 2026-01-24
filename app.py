@@ -159,6 +159,16 @@ def handle_large_request(e):
     }), 413
 
 
+@app.errorhandler(404)
+def handle_not_found(e):
+    """Handle page not found errors."""
+    return jsonify({
+        "error": "Endpoint not found",
+        "message": "The requested endpoint does not exist. Check the API documentation at the root endpoint.",
+        "available_endpoints": ["/health", "/calculate", "/retrieve", "/qa", "/aqa"]
+    }), 404
+
+
 @app.errorhandler(500)
 def handle_internal_error(e):
     """Handle internal server errors."""
@@ -166,6 +176,16 @@ def handle_internal_error(e):
     return jsonify({
         "error": "Internal server error",
         "message": "An unexpected error occurred. Please try again later."
+    }), 500
+
+
+@app.errorhandler(Exception)
+def handle_unexpected_error(e):
+    """Catch-all handler for any unhandled exceptions."""
+    logger.exception(f"Unhandled exception: {e}")
+    return jsonify({
+        "error": "An unexpected error occurred",
+        "message": str(e) if app.debug else "Please try again later."
     }), 500
 
 
@@ -296,7 +316,7 @@ def qa():
     
     Request JSON:
         - query (string, required): Question to answer
-        - top_k (int, optional): Number of context documents (1-10, default: 5)
+        - top_k (int, optional): Number of context documents (1-10, default: 3)
         - prefer_grok (bool, optional): Prefer Groq/Grok model (default: true)
     
     Returns:
@@ -309,12 +329,17 @@ def qa():
         if not query_text or len(query_text) < 2:
             raise APIError("Query must be at least 2 characters", 400)
         
-        top_k = validate_positive_int(payload.get("top_k", 5), "top_k", min_val=1, max_val=10)
+        # Default to 3 docs instead of 5 for faster response
+        top_k = validate_positive_int(payload.get("top_k", 3), "top_k", min_val=1, max_val=8)
         prefer_grok = bool(payload.get("prefer_grok", True))
         
-        # Retrieve relevant context
-        index, docs = get_vectorstore()
-        results = query(index, docs, query_text, top_k=top_k)
+        # Retrieve relevant context with timeout handling
+        try:
+            index, docs = get_vectorstore()
+            results = query(index, docs, query_text, top_k=top_k)
+        except Exception as ve:
+            logger.error(f"Vectorstore query failed: {ve}")
+            raise APIError("Search service temporarily unavailable", 503)
         
         if not results:
             return jsonify({
@@ -323,8 +348,17 @@ def qa():
                 "sources": []
             }), 200
         
-        # Generate answer
-        answer, model_used, _ = generate_answer(query_text, results, prefer_grok=prefer_grok)
+        # Generate answer with shorter timeout
+        try:
+            answer, model_used, _ = generate_answer(query_text, results, prefer_grok=prefer_grok, timeout=25)
+        except Exception as ge:
+            logger.error(f"Answer generation failed: {ge}")
+            # Return sources even if generation fails
+            return jsonify({
+                "answer": "I found relevant documents but couldn't generate a complete answer. Here are the key sections from the tax law that may help:",
+                "model": "fallback",
+                "sources": results
+            }), 200
         
         return jsonify({
             "query": query_text,

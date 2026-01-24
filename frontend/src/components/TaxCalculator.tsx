@@ -67,6 +67,10 @@ export default function TaxCalculator() {
     setResult(null)
 
     try {
+      // Create abort controller for timeout
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
+      
       const response = await fetch('/api/calculate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -77,8 +81,10 @@ export default function TaxCalculator() {
           pension: parseFloat(formData.pension) || 0,
           include_cra: formData.includeCRA,
         }),
+        signal: controller.signal,
       })
 
+      clearTimeout(timeoutId)
       const data = await response.json()
 
       if (!response.ok) {
@@ -88,7 +94,11 @@ export default function TaxCalculator() {
       setResult(data)
     } catch (err) {
       console.error('Error:', err)
-      setError(err instanceof Error ? err.message : 'Failed to calculate tax. Please try again.')
+      if (err instanceof Error && err.name === 'AbortError') {
+        setError('Request timed out. Please check your connection and try again.')
+      } else {
+        setError(err instanceof Error ? err.message : 'Failed to calculate tax. Please try again.')
+      }
     } finally {
       setIsLoading(false)
     }
