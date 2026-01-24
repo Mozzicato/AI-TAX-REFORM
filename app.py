@@ -71,7 +71,7 @@ _vectorstore_lock = threading.Lock()
 
 
 def preload_vectorstore():
-    """Preload vectorstore and embedding model in background thread."""
+    """Preload vectorstore in background thread (embeddings use HF API, no local model)."""
     global _vectorstore_cache, _vectorstore_loading
     with _vectorstore_lock:
         if _vectorstore_cache is None and not _vectorstore_loading:
@@ -81,13 +81,7 @@ def preload_vectorstore():
         try:
             logger.info("Background loading vectorstore...")
             _vectorstore_cache = load_vectorstore()
-            logger.info("Vectorstore preloaded successfully")
-            
-            # Also preload the embedding model by doing a dummy query
-            logger.info("Preloading embedding model...")
-            index, docs = _vectorstore_cache
-            query(index, docs, "test", top_k=1)
-            logger.info("Embedding model preloaded successfully")
+            logger.info("Vectorstore preloaded successfully (using HF API for embeddings)")
         except Exception as e:
             logger.error(f"Background preload failed: {e}")
         finally:

@@ -16,49 +16,37 @@ import numpy as np
 import requests
 
 
-def embed_text_hf(texts, model_id="nvidia/llama-embed-nemotron-8b", api_token=None, timeout=10):
+def embed_text_hf(texts, model_id="sentence-transformers/all-mpnet-base-v2", api_token=None, timeout=15):
     """Call HF Inference API to embed texts with timeout."""
     if api_token is None:
         raise Exception("HF_TOKEN not found. Please set HF_TOKEN in your .env or environment variables.")
-    api_url = f"https://router.huggingface.co/models/{model_id}"
+    
+    # Use feature-extraction pipeline for sentence-transformers models
+    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
     headers = {"Authorization": f"Bearer {api_token}"}
     
-    payload = {"inputs": texts}
+    payload = {"inputs": texts, "options": {"wait_for_model": True}}
     response = requests.post(api_url, json=payload, headers=headers, timeout=timeout)
     
     if response.status_code != 200:
         if response.status_code == 401:
             raise Exception("HF API error 401: Unauthorized. Check your HF_TOKEN and model access permissions.")
+        if response.status_code == 503:
+            raise Exception("HF API: Model is loading, please retry in a moment.")
         raise Exception(f"HF API error {response.status_code}: {response.text}")
     
     embeddings = response.json()
     if isinstance(embeddings, dict) and "error" in embeddings:
         raise Exception(f"HF API error: {embeddings['error']}")
     
-    return np.array(embeddings, dtype=np.float32)
-
-
-def embed_text_local(texts, model_name="sentence-transformers/all-mpnet-base-v2"):
-    """Embed texts locally using sentence-transformers with model caching."""
-    global _sentence_model_cache
-    try:
-        from sentence_transformers import SentenceTransformer
-    except Exception as e:
-        raise Exception("Local sentence-transformers not installed. Install it with `pip install sentence-transformers`.")
+    # HF returns list of embeddings, need to handle the format
+    # For feature-extraction, it returns token-level embeddings, we need to mean pool
+    emb_array = np.array(embeddings, dtype=np.float32)
+    if len(emb_array.shape) == 3:
+        # Mean pooling over tokens
+        emb_array = emb_array.mean(axis=1)
     
-    # Cache the model to avoid reloading
-    if '_sentence_model_cache' not in globals() or _sentence_model_cache is None:
-        _sentence_model_cache = {}
-    
-    if model_name not in _sentence_model_cache:
-        _sentence_model_cache[model_name] = SentenceTransformer(model_name)
-    
-    model = _sentence_model_cache[model_name]
-    embs = model.encode(texts, show_progress_bar=False, convert_to_numpy=True)
-    return np.array(embs, dtype=np.float32)
-
-# Model cache
-_sentence_model_cache = None
+    return emb_array
 
 
 def load_vectorstore(persist_dir="vectorstore"):
@@ -70,13 +58,17 @@ def load_vectorstore(persist_dir="vectorstore"):
 
 
 def query(index, docs, q, model_id="sentence-transformers/all-mpnet-base-v2", top_k=5, api_token=None):
+    """Query the vectorstore using HuggingFace API for embeddings (no local model needed)."""
     if api_token is None:
         env_vars = dotenv_values()
         api_token = os.getenv("HF_TOKEN") or env_vars.get("HF_TOKEN")
-    if model_id.startswith("sentence-transformers/"):
-        emb = embed_text_local([q], model_id)
-    else:
-        emb = embed_text_hf([q], model_id, api_token)
+    
+    if not api_token:
+        raise Exception("HF_TOKEN is required for embeddings. Set it in environment variables.")
+    
+    # Always use HF API - no local model to avoid 420MB+ download
+    emb = embed_text_hf([q], model_id, api_token, timeout=15)
+    
     emb = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-12)
     D, I = index.search(emb, top_k)
     results = []
