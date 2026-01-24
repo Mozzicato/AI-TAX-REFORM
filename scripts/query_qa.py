@@ -21,8 +21,8 @@ def embed_text_hf(texts, model_id="sentence-transformers/all-mpnet-base-v2", api
     if api_token is None:
         raise Exception("HF_TOKEN not found. Please set HF_TOKEN in your .env or environment variables.")
     
-    # Use feature-extraction pipeline for sentence-transformers models
-    api_url = f"https://api-inference.huggingface.co/pipeline/feature-extraction/{model_id}"
+    # Use the new router endpoint (api-inference is deprecated)
+    api_url = f"https://router.huggingface.co/hf-inference/models/{model_id}"
     headers = {"Authorization": f"Bearer {api_token}"}
     
     payload = {"inputs": texts, "options": {"wait_for_model": True}}
@@ -58,18 +58,19 @@ def load_vectorstore(persist_dir="vectorstore"):
 
 
 def query(index, docs, q, model_id="sentence-transformers/all-mpnet-base-v2", top_k=5, api_token=None):
-    """Query the vectorstore using HuggingFace API for embeddings (no local model needed)."""
-    if api_token is None:
-        env_vars = dotenv_values()
-        api_token = os.getenv("HF_TOKEN") or env_vars.get("HF_TOKEN")
+    """Query the vectorstore using local sentence-transformers model."""
+    # Use local model - HF API doesn't support direct embeddings for sentence-transformers
+    from sentence_transformers import SentenceTransformer
     
-    if not api_token:
-        raise Exception("HF_TOKEN is required for embeddings. Set it in environment variables.")
+    # Cache model in module-level variable
+    global _st_model
+    if '_st_model' not in globals() or _st_model is None:
+        _st_model = SentenceTransformer(model_id)
     
-    # Always use HF API - no local model to avoid 420MB+ download
-    emb = embed_text_hf([q], model_id, api_token, timeout=15)
-    
+    emb = _st_model.encode([q], show_progress_bar=False, convert_to_numpy=True)
+    emb = np.array(emb, dtype=np.float32)
     emb = emb / (np.linalg.norm(emb, axis=1, keepdims=True) + 1e-12)
+    
     D, I = index.search(emb, top_k)
     results = []
     for score, idx in zip(D[0], I[0]):
@@ -78,6 +79,9 @@ def query(index, docs, q, model_id="sentence-transformers/all-mpnet-base-v2", to
         meta = docs[idx]
         results.append({"score": float(score), "text": meta["text"], "source": meta["source"], "page": meta["page"], "chunk_id": meta["chunk_id"]})
     return results
+
+# Model cache
+_st_model = None
 
 
 if __name__ == "__main__":

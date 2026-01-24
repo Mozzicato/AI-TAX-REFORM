@@ -37,3 +37,18 @@ daemon = False
 limit_request_line = 4094
 limit_request_fields = 100
 limit_request_field_size = 8190
+
+
+def on_starting(server):
+    """Preload models before workers fork."""
+    import logging
+    logger = logging.getLogger(__name__)
+    logger.info("Preloading sentence-transformers model...")
+    try:
+        from sentence_transformers import SentenceTransformer
+        model = SentenceTransformer("sentence-transformers/all-mpnet-base-v2")
+        # Warm up with a test encode
+        model.encode(["test"], show_progress_bar=False)
+        logger.info("Model preloaded successfully")
+    except Exception as e:
+        logger.error(f"Model preload failed: {e}")

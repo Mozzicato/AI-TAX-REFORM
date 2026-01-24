@@ -5,8 +5,9 @@ flask-limiter==3.5.0
 python-dotenv==1.0.0
 gunicorn==21.2.0
 
-# Vector Store (using HF API for embeddings - no local model needed)
+# Vector Store & Embeddings
 faiss-cpu==1.13.2
+sentence-transformers==2.2.2
 
 # Document Processing
 PyPDF2==3.0.1
