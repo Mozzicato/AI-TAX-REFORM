@@ -50,10 +50,24 @@ def embed_text_hf(texts, model_id="sentence-transformers/all-mpnet-base-v2", api
 
 
 def load_vectorstore(persist_dir="vectorstore"):
+    import logging
+    logger = logging.getLogger(__name__)
     persist_dir = Path(persist_dir)
-    index = faiss.read_index(str(persist_dir / "faiss_index.bin"))
-    with open(persist_dir / "metadata.pkl", "rb") as f:
+    
+    index_path = persist_dir / "faiss_index.bin"
+    meta_path = persist_dir / "metadata.pkl"
+    
+    logger.info(f"Loading vectorstore from {persist_dir}")
+    logger.info(f"Index exists: {index_path.exists()}, size: {index_path.stat().st_size if index_path.exists() else 0}")
+    logger.info(f"Metadata exists: {meta_path.exists()}, size: {meta_path.stat().st_size if meta_path.exists() else 0}")
+    
+    index = faiss.read_index(str(index_path))
+    logger.info(f"FAISS index loaded, ntotal: {index.ntotal}")
+    
+    with open(meta_path, "rb") as f:
         docs = pickle.load(f)
+    logger.info(f"Metadata loaded, {len(docs)} documents")
+    
     return index, docs
 
 
