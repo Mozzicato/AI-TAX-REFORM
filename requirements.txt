@@ -7,7 +7,7 @@ gunicorn==21.2.0
 
 # Vector Store & Embeddings
 faiss-cpu==1.13.2
-sentence-transformers==2.2.2
+sentence-transformers>=2.6.0
 
 # Document Processing
 PyPDF2==3.0.1
